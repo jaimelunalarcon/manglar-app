@@ -1,17 +1,49 @@
 import React from 'react';
 import Table from 'react-bootstrap/Table';
+import Row from 'react-bootstrap/Row';
+import Col from 'react-bootstrap/Col';
+import Form from 'react-bootstrap/Form';
 
 function Finanzas() {
   return (
   <div>
-    <h2 className='mb-5'>Finanzas (Admin)</h2>
-    <Table hover responsive>
+    <h2 className='mb-3'>Finanzas (Admin)</h2>
+    <Row>
+      <Col sm={12} md={12}>
+        <div className='border bg-white p-4 rounded mb-4'>
+          <h2>Ingresos anuales</h2>
+          --->Aca va el gráfico <strong> Hijo del pico</strong>
+        </div>
+      </Col>
+      <Row>
+        <Col sm={12} md={4}>
+        <div className='pb-4'>
+          <label htmlFor="">Selecciona el mes</label>
+          <Form.Select aria-label="Default select example">
+            <option>Octubre</option>
+            <option value="1">Enero</option>
+            <option value="2">Febrero</option>
+            <option value="3">Marzo</option>
+            <option value="3">Anril</option>
+            <option value="3">Mayo</option>
+            <option value="3">Junio</option>
+            <option value="3">Julio</option>
+            <option value="3">Agosto</option>
+            <option value="3">Septiembre</option>
+            <option value="3">Noviembre</option>
+            <option value="3">Diciebre</option>
+          </Form.Select>
+        </div>
+        </Col>
+      </Row>
+        <Col sm={12} md={6} >
+        <Table hover responsive>
         <thead>
           <tr className='text-center text-white'>
-            <th className=' bg-dark text-white'>Usuario</th>
-            <th className=' bg-dark text-white'>Puntos</th>
-            <th className=' bg-dark text-white'>Abono</th>
-            <th className=' bg-dark text-white'>Deuda</th>
+            <th className=' bg-secondary text-white'>Usuario</th>
+            <th className=' bg-secondary text-white'>Puntos</th>
+            <th className=' bg-secondary text-white'>Abono</th>
+            <th className=' bg-secondary text-white'>Deuda</th>
           </tr>
         </thead>
         <tbody>
@@ -33,16 +65,28 @@ function Finanzas() {
             <td>$40.000</td>
             <td className='text-center'>$0</td>
           </tr>
+          <tr className='text-center'>
+             <td>Santi</td>
+            <td>0</td>
+            <td>$40.000</td>
+            <td className='text-center'>$0</td>
+          </tr>
+          <tr className='text-center'>
+             <td>Fran</td>
+            <td>0</td>
+            <td>$40.000</td>
+            <td className='text-center'>$0</td>
+          </tr>
   
         </tbody>
-      </Table>
-
-      <Table hover responsive className='mt-3 mb-3'>
+      </Table></Col>
+        <Col sm={12} md={6}>
+         <Table hover responsive>
         <thead>
-          <tr className=' bg-dark text-white'>
-            <th className=' bg-dark text-white'>Gasto</th>
-            <th className='text-center bg-dark text-white'>Fecha</th>
-            <th className='text-center bg-dark text-white'>Valor</th>
+          <tr className=' bg-secondary text-white'>
+            <th className=' bg-secondary text-white'>Gasto</th>
+            <th className='text-center bg-secondary text-white'>Fecha</th>
+            <th className='text-center bg-secondary text-white'>Valor</th>
           </tr>
         </thead>
         <tbody>
@@ -64,6 +108,13 @@ function Finanzas() {
   
         </tbody>
       </Table>
+              <button className='btn btn-success my-2 float-end'>+ Agregar Gasto</button>
+
+        </Col>
+      </Row>
+    
+
+     
       <card className="border bg-white d-block p-3 rounded">
         Total ingresos casa <span className='float-end'>$210.000</span>
       </card>
