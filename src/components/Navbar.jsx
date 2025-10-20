@@ -27,7 +27,7 @@ export default function Navbar({ brand="App", links=[], onLogout }) {
             ))}
             {onLogout && (
               <li className="nav-item">
-                <button className="btn btn-outline-danger ms-2" onClick={onLogout}>Cerrar sesión</button>
+                <button className="btn btn-danger ms-2" onClick={onLogout}>Cerrar sesión</button>
               </li>
             )}
           </ul>
