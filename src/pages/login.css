@@ -1,0 +1,50 @@
+
+/* Si el starter limitó el #root, lo “desbloqueamos” aquí también */
+:root body #root {
+  max-width: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  width: 100% !important;
+}
+
+/* Card más limpia en login */
+.login-card {
+  width: 100%;
+  max-width: 420px;          /* ancho cómodo para el formulario */
+  border: 0;
+  box-shadow: 0 6px 24px rgba(0,0,0,.08);
+}
+
+.login-page .btn-login{
+    background-color: #0F8489;
+    border: none;
+    color: #fff;
+}
+
+
+.login-page  .btn-login:hover{
+    background-color: #09464a;
+    border: none;
+        color: #fff;
+
+}
+
+
+.login-page  h1{
+ color: #126166;
+ font-size: 1.2rem;
+ letter-spacing: 2px;
+}
+
+.login-page h3{
+    font-size: 1rem;
+    margin-bottom: 30px;
+}
+
+.login-page .reset-password{
+    color: #d86915 !important;
+}
+
+body{
+    background-color: #f8f8f8 !important;
+}

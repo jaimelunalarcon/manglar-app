@@ -1,0 +1,18 @@
+.dashboard-admin h2 {
+    font-size: 1rem;
+    text-transform: uppercase;
+    margin: 20px 0;
+    color: #555;
+}
+
+.dashboard-admin .card-tarea{
+    border-radius: 0 !important;
+}
+
+.dashboard-admin .card-tarea.active{
+   border-left: solid 5px #12c129;
+}
+
+.dashboard-admin .card-tarea.lost{
+   border-left: solid 5px #d45252;
+}
