@@ -17,9 +17,12 @@ export default function Navbar({ brand="App", links=[], onLogout }) {
           <ul className="navbar-nav ms-auto">
             {links.map(l => (
               <li className="nav-item" key={l.to}>
-                <NavLink className={({isActive}) => "nav-link" + (isActive ? " active" : "")} to={l.to}>
-                  {l.label}
-                </NavLink>
+               <NavLink className={({isActive}) => "nav-link" + (isActive ? " active" : "")} to={l.to}>
+                {l.icon && <i className={`bi ${l.icon} me-2`} aria-hidden="true"></i>}
+                {l.label}
+              </NavLink>
+
+                
               </li>
             ))}
             {onLogout && (

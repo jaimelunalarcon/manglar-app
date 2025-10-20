@@ -9,6 +9,7 @@ import NotFound from '../pages/NotFound';
 import AdminDashboard from '../pages/admin/Dashboard';
 import AdminTareas from '../pages/admin/Tareas';
 import AdminFinanzas from '../pages/admin/Finanzas';
+import AdminUsuarios from '../pages/admin/Usuarios';
 
 import ArriDashboard from '../pages/arrendatario/Dashboard';
 import ArriTareas from '../pages/arrendatario/Tareas';
@@ -41,6 +42,7 @@ export default function AppRouter() {
         <Route index element={<AdminDashboard />} />
         <Route path="tareas" element={<AdminTareas />} />
         <Route path="finanzas" element={<AdminFinanzas />} />
+        <Route path="usuarios" element={<AdminUsuarios />} />
       </Route>
 
       {/* Arrendatario */}

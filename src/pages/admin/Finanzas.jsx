@@ -2,12 +2,13 @@ import React from 'react';
 import Table from 'react-bootstrap/Table';
 import Row from 'react-bootstrap/Row';
 import Col from 'react-bootstrap/Col';
+import Badge from 'react-bootstrap/Badge';
 import Form from 'react-bootstrap/Form';
 
 function Finanzas() {
   return (
   <div>
-    <h2 className='mb-3'>Finanzas (Admin)</h2>
+    <h2 className='mb-3'><i class="bi me-2 bi-bar-chart-fill"></i>Finanzas (Admin)</h2>
     <Row>
       <Col sm={12} md={12}>
         <div className='border bg-white p-4 rounded mb-4'>
@@ -50,31 +51,31 @@ function Finanzas() {
           <tr className='text-center'>
             <td>Felipe</td>
             <td>10</td>
-            <td>$20.000</td>
+            <td>$20.000 <a href="#" className='ms-2'><Badge pill bg="info">+</Badge></a></td>
             <td className='text-center'>$14.000</td>   
           </tr>
           <tr className='text-center'>
              <td>Kototo</td>
             <td>2</td>
-            <td>$20.000</td>
+            <td>$20.000<a href="#" className='ms-2'><Badge pill bg="info">+</Badge></a></td>
             <td className='text-center'>$34.000</td>
           </tr>
           <tr className='text-center'>
              <td>Mati</td>
             <td>0</td>
-            <td>$40.000</td>
+            <td>$40.000<a href="#" className='ms-2'><Badge pill bg="info">+</Badge></a></td>
             <td className='text-center'>$0</td>
           </tr>
           <tr className='text-center'>
              <td>Santi</td>
             <td>0</td>
-            <td>$40.000</td>
+            <td>$10.000<a href="#" className='ms-2'><Badge pill bg="info">+</Badge></a></td>
             <td className='text-center'>$0</td>
           </tr>
           <tr className='text-center'>
              <td>Fran</td>
             <td>0</td>
-            <td>$40.000</td>
+            <td>$20.000<a href="#" className='ms-2'><Badge pill bg="info">+</Badge></a></td>
             <td className='text-center'>$0</td>
           </tr>
   

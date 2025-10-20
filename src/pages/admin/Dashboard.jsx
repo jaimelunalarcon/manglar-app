@@ -7,7 +7,7 @@ function Dashboard()
     return(
        <div className='dashboard-admin'>
       <h1 className='mt-3'>Dashboard Admin</h1>
-      <p className='mb-5'><i class="bi bi-calendar"></i> Semana 13 oct - 20 oct</p>
+      <p className='mb-5'><i class="bi bi-calendar mr-3"></i> Semana 13 oct - 20 oct</p>
       <section className='border p-3 rounded bg-white mb-3'>
         <h2>Tareas Arrendatarios</h2>
          <Card className='mb-3 card-tarea active'>

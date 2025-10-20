@@ -11,11 +11,18 @@ export default function BaseLayout() {
   const isAdmin = user?.role === 'admin';
   const base = isAdmin ? '/admin' : '/arrendatario';
 
-  const links = [
-    { to: base, label: 'Dashboard' },
-    { to: base + '/tareas', label: 'Tareas' },
-    { to: base + '/finanzas', label: 'Finanzas' },
-  ];
+  const links = isAdmin
+    ? [
+       { to: '/admin',          label: 'Dashboard', icon: 'bi-speedometer2' },
+      { to: '/admin/tareas',   label: 'Tareas',    icon: 'bi-check2-square' },
+      { to: '/admin/finanzas', label: 'Finanzas',  icon: 'bi-bar-chart-fill' }, // 👈
+      { to: '/admin/usuarios', label: 'Usuarios',  icon: 'bi-people-fill' },
+      ]
+    : [
+        { to: '/arrendatario',          label: 'Dashboard' },
+        { to: '/arrendatario/tareas',   label: 'Tareas' },
+        { to: '/arrendatario/finanzas', label: 'Finanzas' },
+      ];
 
   const handleLogout = () => {
     logout();
