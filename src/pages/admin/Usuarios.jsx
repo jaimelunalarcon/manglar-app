@@ -270,8 +270,9 @@ function Usuarios() {
         <Modal.Body>
           <Form>
             <Form.Group className="mb-3">
-              <Form.Label>RUT <span className="text-danger">*</span></Form.Label>
+              <Form.Label htmlFor="rut">RUT <span className="text-danger">*</span></Form.Label>
               <Form.Control
+                id="rut"
                 type="text"
                 name="rut"
                 value={usuarioActual.rut}
