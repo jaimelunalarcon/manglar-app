@@ -25,7 +25,7 @@ export default function Dashboard() {
           <Card.Body className="shadow-sm">
             Patio / <strong>Arrendatario 1</strong><br />
             <span className="text-success">Quedan 11 hrs</span>
-            <Card.Link href="#" className="float-end actions-button text-primary">ABIERTA</Card.Link>
+            <Card.Link href="#" className="float-end actions-button bg-secondary rounded-pill px-2 text-white">PENDIENTE</Card.Link>
           </Card.Body>
         </Card>
 
@@ -33,7 +33,7 @@ export default function Dashboard() {
           <Card.Body className="shadow-sm">
             Cocina / <strong>Arrendatario 2</strong><br />
             <span className="text-success">Quedan 5 hrs</span>
-            <Card.Link href="#" className="float-end actions-button text-success">APROBAR</Card.Link>
+            <Card.Link href="#" className="float-end actions-button bg-success rounded-pill px-2 text-white">APROBAR</Card.Link>
           </Card.Body>
         </Card>
 
@@ -41,7 +41,7 @@ export default function Dashboard() {
           <Card.Body className="shadow-sm">
             Espacios Comunes / <strong>Arrendatario 3</strong><br />
             <span className="text-danger">Quedan 0 hrs</span>
-            <Card.Link href="#" className="float-end actions-button text-danger">NO HECHA</Card.Link>
+            <Card.Link href="#" className="float-end actions-button bg-danger rounded-pill px-2 text-white">NO HECHA</Card.Link>
           </Card.Body>
         </Card>
       </section>
@@ -51,17 +51,17 @@ export default function Dashboard() {
 
         <Card className="mb-3 card-tarea active reveal">
           <Card.Body className="shadow-sm">
-            Patio / <strong>Arrendatario 1</strong><br />
+            Patio <br />
             <span className="text-success">Quedan 11 hrs</span>
-            <Card.Link href="#" className="float-end actions-button text-success">EVIDENCIA</Card.Link>
+            <Card.Link href="#" className="float-end actions-button bg-success rounded-pill px-2 text-white">EVIDENCIA</Card.Link>
           </Card.Body>
         </Card>
 
         <Card className="mb-3 card-tarea active reveal">
           <Card.Body className="shadow-sm">
-            Cocina / <strong>Arrendatario 2</strong><br />
+            Cocina<br />
             <span className="text-success">Quedan 5 hrs</span>
-            <Card.Link href="#" className="float-end actions-button text-success">EVIDENCIA</Card.Link>
+            <Card.Link href="#" className="float-end actions-button bg-success rounded-pill px-2 text-white">EVIDENCIA</Card.Link>
           </Card.Body>
         </Card>
       </section>

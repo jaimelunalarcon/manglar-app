@@ -17,6 +17,12 @@
     background-color: #f3f5f7;
 }
 
+
+.dashboard-admin .actions-button{
+ font-size: 0.8rem;
+ 
+}
 .dashboard-admin .actions-button:hover{
  text-decoration: underline;
+ 
 }
