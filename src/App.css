@@ -38,3 +38,19 @@ body { margin: 0; }
 .read-the-docs {
   color: #888;
 }
+
+
+
+
+
+
+
+.header-section h1 {
+    font-size: 1rem;
+    color: #213547;
+}
+
+
+.header-section .subtitle {
+    color: #28664a;
+}
