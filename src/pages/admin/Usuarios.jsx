@@ -1,7 +1,22 @@
+// src/pages/admin/Usuarios.jsx
 import React, { useState, useEffect } from 'react';
 import { Table, Button, Modal, Form } from 'react-bootstrap';
 
-function Usuarios() {
+// Etiquetas “bonitas” para mostrar en tabla
+const ROLE_LABEL = {
+  admin: 'Administrador',
+  arrendatario: 'Arrendatario',
+};
+
+// Normaliza valores antiguos del LS (“Administrador”, “Usuario”, “Supervisor” → admin/arrendatario)
+function normalizeRole(raw) {
+  const k = (raw || '').toString().trim().toLowerCase();
+  if (k === 'admin' || k === 'administrador') return 'admin';
+  // cualquier otro lo tratamos como arrendatario
+  return 'arrendatario';
+}
+
+export default function Usuarios() {
   const [usuarios, setUsuarios] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [modoEdicion, setModoEdicion] = useState(false);
@@ -9,23 +24,31 @@ function Usuarios() {
     id: null,
     nombre: '',
     email: '',
-    rol: '',
-    estado: 'activo'
+    rol: 'arrendatario',  // valor compatible por defecto
+    estado: 'activo',
   });
 
-  // Cargar usuarios desde localStorage al iniciar
+  // Cargar usuarios desde localStorage al iniciar (con normalización de rol)
   useEffect(() => {
-    const usuariosGuardados = localStorage.getItem('usuarios');
-    if (usuariosGuardados) {
-      setUsuarios(JSON.parse(usuariosGuardados));
+    const raw = localStorage.getItem('usuarios');
+    if (!raw) return;
+    try {
+      const parsed = JSON.parse(raw);
+      const fixed = Array.isArray(parsed)
+        ? parsed.map(u => ({ ...u, rol: normalizeRole(u.rol) }))
+        : [];
+      setUsuarios(fixed);
+      // opcional: reescribe ya normalizado
+      localStorage.setItem('usuarios', JSON.stringify(fixed));
+    } catch {
+      // si algo viene corrupto, limpiamos
+      localStorage.removeItem('usuarios');
     }
   }, []);
 
   // Guardar usuarios en localStorage cada vez que cambien
   useEffect(() => {
-    if (usuarios.length > 0) {
-      localStorage.setItem('usuarios', JSON.stringify(usuarios));
-    }
+    localStorage.setItem('usuarios', JSON.stringify(usuarios));
   }, [usuarios]);
 
   // Abrir modal para crear
@@ -35,8 +58,8 @@ function Usuarios() {
       id: null,
       nombre: '',
       email: '',
-      rol: '',
-      estado: 'activo'
+      rol: 'arrendatario',  // default
+      estado: 'activo',
     });
     setShowModal(true);
   };
@@ -44,29 +67,27 @@ function Usuarios() {
   // Abrir modal para editar
   const handleEditar = (usuario) => {
     setModoEdicion(true);
-    setUsuarioActual(usuario);
+    setUsuarioActual({ ...usuario });
     setShowModal(true);
   };
 
   // Guardar (crear o actualizar)
   const handleGuardar = () => {
-    if (!usuarioActual.nombre || !usuarioActual.email || !usuarioActual.rol) {
+    const { nombre, email, rol } = usuarioActual;
+    if (!nombre.trim() || !email.trim() || !rol) {
       alert('Por favor complete todos los campos');
+      return;
+    }
+    if (!['admin', 'arrendatario'].includes(rol)) {
+      alert('Rol inválido. Debe ser admin o arrendatario.');
       return;
     }
 
     if (modoEdicion) {
-      // Actualizar usuario existente
-      setUsuarios(usuarios.map(u => 
-        u.id === usuarioActual.id ? usuarioActual : u
-      ));
+      setUsuarios(prev => prev.map(u => (u.id === usuarioActual.id ? usuarioActual : u)));
     } else {
-      // Crear nuevo usuario
-      const nuevoUsuario = {
-        ...usuarioActual,
-        id: Date.now() // ID único basado en timestamp
-      };
-      setUsuarios([...usuarios, nuevoUsuario]);
+      const nuevoUsuario = { ...usuarioActual, id: Date.now() }; // ID simple por timestamp
+      setUsuarios(prev => [...prev, nuevoUsuario]);
     }
 
     setShowModal(false);
@@ -75,31 +96,28 @@ function Usuarios() {
   // Eliminar usuario
   const handleEliminar = (id) => {
     if (window.confirm('¿Está seguro de eliminar este usuario?')) {
-      const nuevosUsuarios = usuarios.filter(u => u.id !== id);
-      setUsuarios(nuevosUsuarios);
-      localStorage.setItem('usuarios', JSON.stringify(nuevosUsuarios));
+      setUsuarios(prev => prev.filter(u => u.id !== id));
     }
   };
 
   // Manejar cambios en el formulario
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setUsuarioActual({
-      ...usuarioActual,
-      [name]: value
-    });
+    setUsuarioActual(prev => ({ ...prev, [name]: value }));
   };
 
   return (
     <div>
-      <div className='header-section'>
-
-      <h1 className="mb-3 mt-3"><i class="bi me-2 bi-people-fill me-2" aria-hidden="true"></i>Usuarios</h1>
+      <div className="header-section">
+        <h1 className="mb-3 mt-3">
+          <i className="bi bi-people-fill me-2" aria-hidden="true"></i>
+          Usuarios
+        </h1>
       </div>
 
       <div className="p-4 bg-white rounded border mt-3">
         <div className="d-flex justify-content-between align-items-center mb-4">
-          <Button className='btn btn-success rounded-pill' onClick={handleNuevo}>
+          <Button className="btn btn-success rounded-pill" onClick={handleNuevo}>
             + Nuevo Usuario
           </Button>
         </div>
@@ -118,7 +136,7 @@ function Usuarios() {
           <tbody>
             {usuarios.length === 0 ? (
               <tr>
-                <td colSpan="6" className="text-center">
+                <td colSpan={6} className="text-center">
                   No hay usuarios registrados
                 </td>
               </tr>
@@ -128,23 +146,23 @@ function Usuarios() {
                   <td>{usuario.id}</td>
                   <td>{usuario.nombre}</td>
                   <td>{usuario.email}</td>
-                  <td>{usuario.rol}</td>
+                  <td>{ROLE_LABEL[usuario.rol] ?? usuario.rol}</td>
                   <td>
                     <span className={`badge bg-${usuario.estado === 'activo' ? 'success' : 'secondary'}`}>
                       {usuario.estado}
                     </span>
                   </td>
                   <td>
-                    <Button 
-                      variant="warning" 
-                      size="sm" 
+                    <Button
+                      variant="warning"
+                      size="sm"
                       className="me-2"
                       onClick={() => handleEditar(usuario)}
                     >
                       Editar
                     </Button>
-                    <Button 
-                      variant="danger" 
+                    <Button
+                      variant="danger"
                       size="sm"
                       onClick={() => handleEliminar(usuario.id)}
                     >
@@ -160,9 +178,7 @@ function Usuarios() {
         {/* Modal para crear/editar */}
         <Modal show={showModal} onHide={() => setShowModal(false)}>
           <Modal.Header closeButton>
-            <Modal.Title>
-              {modoEdicion ? 'Editar Usuario' : 'Nuevo Usuario'}
-            </Modal.Title>
+            <Modal.Title>{modoEdicion ? 'Editar Usuario' : 'Nuevo Usuario'}</Modal.Title>
           </Modal.Header>
           <Modal.Body>
             <Form>
@@ -196,9 +212,8 @@ function Usuarios() {
                   onChange={handleChange}
                 >
                   <option value="">Seleccione un rol</option>
-                  <option value="Administrador">Administrador</option>
-                  <option value="Usuario">Usuario</option>
-                  <option value="Supervisor">Supervisor</option>
+                  <option value="admin">Administrador</option>
+                  <option value="arrendatario">Arrendatario</option>
                 </Form.Select>
               </Form.Group>
 
@@ -228,5 +243,3 @@ function Usuarios() {
     </div>
   );
 }
-
-export default Usuarios;
