@@ -7,11 +7,61 @@ function Usuarios() {
   const [modoEdicion, setModoEdicion] = useState(false);
   const [usuarioActual, setUsuarioActual] = useState({
     id: null,
+    rut: '',
     nombre: '',
     email: '',
     rol: '',
     estado: 'activo'
   });
+  const [errores, setErrores] = useState({});
+
+  // Validar RUT chileno
+  const validarRUT = (rut) => {
+    // Eliminar puntos y guión
+    rut = rut.replace(/\./g, '').replace(/-/g, '');
+    
+    if (rut.length < 2) return false;
+    
+    const cuerpo = rut.slice(0, -1);
+    const dv = rut.slice(-1).toUpperCase();
+    
+    // Calcular dígito verificador
+    let suma = 0;
+    let multiplo = 2;
+    
+    for (let i = cuerpo.length - 1; i >= 0; i--) {
+      suma += parseInt(cuerpo.charAt(i)) * multiplo;
+      multiplo = multiplo < 7 ? multiplo + 1 : 2;
+    }
+    
+    const dvEsperado = 11 - (suma % 11);
+    const dvCalculado = dvEsperado === 11 ? '0' : dvEsperado === 10 ? 'K' : dvEsperado.toString();
+    
+    return dv === dvCalculado;
+  };
+
+  // Formatear RUT mientras se escribe
+  const formatearRUT = (rut) => {
+    // Eliminar todo excepto números y K
+    rut = rut.replace(/[^0-9kK]/g, '');
+    
+    if (rut.length <= 1) return rut;
+    
+    // Separar cuerpo y dígito verificador
+    const cuerpo = rut.slice(0, -1);
+    const dv = rut.slice(-1);
+    
+    // Formatear con puntos
+    let rutFormateado = cuerpo.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    
+    return `${rutFormateado}-${dv}`;
+  };
+
+  // Validar email
+  const validarEmail = (email) => {
+    const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return regex.test(email);
+  };
 
   // Cargar usuarios desde localStorage al iniciar
   useEffect(() => {
@@ -33,11 +83,13 @@ function Usuarios() {
     setModoEdicion(false);
     setUsuarioActual({
       id: null,
+      rut: '',
       nombre: '',
       email: '',
       rol: '',
       estado: 'activo'
     });
+    setErrores({});
     setShowModal(true);
   };
 
@@ -45,13 +97,50 @@ function Usuarios() {
   const handleEditar = (usuario) => {
     setModoEdicion(true);
     setUsuarioActual(usuario);
+    setErrores({});
     setShowModal(true);
   };
 
   // Guardar (crear o actualizar)
   const handleGuardar = () => {
-    if (!usuarioActual.nombre || !usuarioActual.email || !usuarioActual.rol) {
-      alert('Por favor complete todos los campos');
+    // Validaciones
+    const nuevosErrores = {};
+
+    if (!usuarioActual.rut.trim()) {
+      nuevosErrores.rut = 'El RUT es obligatorio';
+    } else if (!validarRUT(usuarioActual.rut)) {
+      nuevosErrores.rut = 'El RUT no es válido';
+    }
+
+    if (!usuarioActual.nombre.trim()) {
+      nuevosErrores.nombre = 'El nombre es obligatorio';
+    }
+
+    if (!usuarioActual.email.trim()) {
+      nuevosErrores.email = 'El email es obligatorio';
+    } else if (!validarEmail(usuarioActual.email)) {
+      nuevosErrores.email = 'El email no es válido';
+    }
+
+    if (!usuarioActual.rol) {
+      nuevosErrores.rol = 'El rol es obligatorio';
+    }
+
+    // Si hay errores, no continuar
+    if (Object.keys(nuevosErrores).length > 0) {
+      setErrores(nuevosErrores);
+      return;
+    }
+
+    // Verificar RUT duplicado
+    const rutLimpio = usuarioActual.rut.replace(/\./g, '').replace(/-/g, '');
+    const rutDuplicado = usuarios.some(u => 
+      u.id !== usuarioActual.id && 
+      u.rut.replace(/\./g, '').replace(/-/g, '') === rutLimpio
+    );
+
+    if (rutDuplicado) {
+      setErrores({ rut: 'Este RUT ya está registrado' });
       return;
     }
 
@@ -69,6 +158,7 @@ function Usuarios() {
       setUsuarios([...usuarios, nuevoUsuario]);
     }
 
+    setErrores({});
     setShowModal(false);
   };
 
@@ -84,10 +174,28 @@ function Usuarios() {
   // Manejar cambios en el formulario
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setUsuarioActual({
-      ...usuarioActual,
-      [name]: value
-    });
+    
+    // Formatear RUT mientras se escribe
+    if (name === 'rut') {
+      const rutFormateado = formatearRUT(value);
+      setUsuarioActual({
+        ...usuarioActual,
+        [name]: rutFormateado
+      });
+    } else {
+      setUsuarioActual({
+        ...usuarioActual,
+        [name]: value
+      });
+    }
+
+    // Limpiar error del campo al modificarlo
+    if (errores[name]) {
+      setErrores({
+        ...errores,
+        [name]: null
+      });
+    }
   };
 
   return (
@@ -102,7 +210,7 @@ function Usuarios() {
       <Table striped bordered hover responsive>
         <thead>
           <tr>
-            <th>ID</th>
+            <th>RUT</th>
             <th>Nombre</th>
             <th>Email</th>
             <th>Rol</th>
@@ -120,7 +228,7 @@ function Usuarios() {
           ) : (
             usuarios.map((usuario) => (
               <tr key={usuario.id}>
-                <td>{usuario.id}</td>
+                <td>{usuario.rut}</td>
                 <td>{usuario.nombre}</td>
                 <td>{usuario.email}</td>
                 <td>{usuario.rol}</td>
@@ -162,39 +270,70 @@ function Usuarios() {
         <Modal.Body>
           <Form>
             <Form.Group className="mb-3">
-              <Form.Label>Nombre</Form.Label>
+              <Form.Label>RUT <span className="text-danger">*</span></Form.Label>
+              <Form.Control
+                type="text"
+                name="rut"
+                value={usuarioActual.rut}
+                onChange={handleChange}
+                placeholder="Ej: 12345678-9"
+                isInvalid={!!errores.rut}
+                maxLength="12"
+              />
+              <Form.Control.Feedback type="invalid">
+                {errores.rut}
+              </Form.Control.Feedback>
+              <Form.Text className="text-muted">
+                Ingrese el RUT, se formateará automáticamente
+              </Form.Text>
+            </Form.Group>
+
+            <Form.Group className="mb-3">
+              <Form.Label>Nombre <span className="text-danger">*</span></Form.Label>
               <Form.Control
                 type="text"
                 name="nombre"
                 value={usuarioActual.nombre}
                 onChange={handleChange}
-                placeholder="Ingrese el nombre"
+                placeholder="Ingrese el nombre completo"
+                isInvalid={!!errores.nombre}
               />
+              <Form.Control.Feedback type="invalid">
+                {errores.nombre}
+              </Form.Control.Feedback>
             </Form.Group>
 
             <Form.Group className="mb-3">
-              <Form.Label>Email</Form.Label>
+              <Form.Label>Email <span className="text-danger">*</span></Form.Label>
               <Form.Control
                 type="email"
                 name="email"
                 value={usuarioActual.email}
                 onChange={handleChange}
-                placeholder="Ingrese el email"
+                placeholder="correo@ejemplo.com"
+                isInvalid={!!errores.email}
               />
+              <Form.Control.Feedback type="invalid">
+                {errores.email}
+              </Form.Control.Feedback>
             </Form.Group>
 
             <Form.Group className="mb-3">
-              <Form.Label>Rol</Form.Label>
+              <Form.Label>Rol <span className="text-danger">*</span></Form.Label>
               <Form.Select
                 name="rol"
                 value={usuarioActual.rol}
                 onChange={handleChange}
+                isInvalid={!!errores.rol}
               >
                 <option value="">Seleccione un rol</option>
                 <option value="Administrador">Administrador</option>
                 <option value="Usuario">Usuario</option>
                 <option value="Supervisor">Supervisor</option>
               </Form.Select>
+              <Form.Control.Feedback type="invalid">
+                {errores.rol}
+              </Form.Control.Feedback>
             </Form.Group>
 
             <Form.Group className="mb-3">
