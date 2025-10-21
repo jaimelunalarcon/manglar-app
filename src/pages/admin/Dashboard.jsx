@@ -32,7 +32,7 @@ export default function Dashboard() {
           <Card.Body className="shadow-sm">
             Cocina / <strong>Arrendatario 2</strong><br />
             <span className="text-success">Quedan 5 hrs</span>
-            <Card.Link href="#" className="float-end text-success">APROBAR</Card.Link>
+            <Card.Link href="#" className="float-end actions-button text-success">APROBAR</Card.Link>
           </Card.Body>
         </Card>
 

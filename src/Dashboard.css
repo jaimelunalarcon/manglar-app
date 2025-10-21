@@ -19,5 +19,12 @@
 
 .dashboard-admin .card-tarea:hover{
     background-color: #f3f5f7;
-    cursor: pointer;
+}
+
+.dashboard-admin h1 {
+    font-size: 2rem;
+}
+
+.dashboard-admin .actions-button:hover {
+    text-decoration: underline;
 }
