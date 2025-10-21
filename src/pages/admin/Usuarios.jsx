@@ -1,22 +1,7 @@
-// src/pages/admin/Usuarios.jsx
 import React, { useState, useEffect } from 'react';
 import { Table, Button, Modal, Form } from 'react-bootstrap';
 
-// Etiquetas “bonitas” para mostrar en tabla
-const ROLE_LABEL = {
-  admin: 'Administrador',
-  arrendatario: 'Arrendatario',
-};
-
-// Normaliza valores antiguos del LS (“Administrador”, “Usuario”, “Supervisor” → admin/arrendatario)
-function normalizeRole(raw) {
-  const k = (raw || '').toString().trim().toLowerCase();
-  if (k === 'admin' || k === 'administrador') return 'admin';
-  // cualquier otro lo tratamos como arrendatario
-  return 'arrendatario';
-}
-
-export default function Usuarios() {
+function Usuarios() {
   const [usuarios, setUsuarios] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [modoEdicion, setModoEdicion] = useState(false);
@@ -25,8 +10,8 @@ export default function Usuarios() {
     rut: '',
     nombre: '',
     email: '',
-    rol: 'arrendatario',  // valor compatible por defecto
-    estado: 'activo',
+    rol: '',
+    estado: 'activo'
   });
   const [errores, setErrores] = useState({});
 
@@ -78,27 +63,19 @@ export default function Usuarios() {
     return regex.test(email);
   };
 
-  // Cargar usuarios desde localStorage al iniciar (con normalización de rol)
+  // Cargar usuarios desde localStorage al iniciar
   useEffect(() => {
-    const raw = localStorage.getItem('usuarios');
-    if (!raw) return;
-    try {
-      const parsed = JSON.parse(raw);
-      const fixed = Array.isArray(parsed)
-        ? parsed.map(u => ({ ...u, rol: normalizeRole(u.rol) }))
-        : [];
-      setUsuarios(fixed);
-      // opcional: reescribe ya normalizado
-      localStorage.setItem('usuarios', JSON.stringify(fixed));
-    } catch {
-      // si algo viene corrupto, limpiamos
-      localStorage.removeItem('usuarios');
+    const usuariosGuardados = localStorage.getItem('usuarios');
+    if (usuariosGuardados) {
+      setUsuarios(JSON.parse(usuariosGuardados));
     }
   }, []);
 
   // Guardar usuarios en localStorage cada vez que cambien
   useEffect(() => {
-    localStorage.setItem('usuarios', JSON.stringify(usuarios));
+    if (usuarios.length > 0) {
+      localStorage.setItem('usuarios', JSON.stringify(usuarios));
+    }
   }, [usuarios]);
 
   // Abrir modal para crear
@@ -109,8 +86,8 @@ export default function Usuarios() {
       rut: '',
       nombre: '',
       email: '',
-      rol: 'arrendatario',  // default
-      estado: 'activo',
+      rol: '',
+      estado: 'activo'
     });
     setErrores({});
     setShowModal(true);
@@ -166,16 +143,19 @@ export default function Usuarios() {
       setErrores({ rut: 'Este RUT ya está registrado' });
       return;
     }
-    if (!['admin', 'arrendatario'].includes(rol)) {
-      alert('Rol inválido. Debe ser admin o arrendatario.');
-      return;
-    }
 
     if (modoEdicion) {
-      setUsuarios(prev => prev.map(u => (u.id === usuarioActual.id ? usuarioActual : u)));
+      // Actualizar usuario existente
+      setUsuarios(usuarios.map(u => 
+        u.id === usuarioActual.id ? usuarioActual : u
+      ));
     } else {
-      const nuevoUsuario = { ...usuarioActual, id: Date.now() }; // ID simple por timestamp
-      setUsuarios(prev => [...prev, nuevoUsuario]);
+      // Crear nuevo usuario
+      const nuevoUsuario = {
+        ...usuarioActual,
+        id: Date.now() // ID único basado en timestamp
+      };
+      setUsuarios([...usuarios, nuevoUsuario]);
     }
 
     setErrores({});
@@ -185,7 +165,9 @@ export default function Usuarios() {
   // Eliminar usuario
   const handleEliminar = (id) => {
     if (window.confirm('¿Está seguro de eliminar este usuario?')) {
-      setUsuarios(prev => prev.filter(u => u.id !== id));
+      const nuevosUsuarios = usuarios.filter(u => u.id !== id);
+      setUsuarios(nuevosUsuarios);
+      localStorage.setItem('usuarios', JSON.stringify(nuevosUsuarios));
     }
   };
 
@@ -217,12 +199,12 @@ export default function Usuarios() {
   };
 
   return (
-    <div>
-      <div className="header-section">
-        <h1 className="mb-3 mt-3">
-          <i className="bi bi-people-fill me-2" aria-hidden="true"></i>
-          Usuarios
-        </h1>
+    <div className="p-4 bg-white border mt-3">
+      <div className="d-flex justify-content-between align-items-center mb-4">
+        <h2 className="mb-0">Usuarios</h2>
+        <Button variant="primary" onClick={handleNuevo}>
+          + Nuevo Usuario
+        </Button>
       </div>
 
       <Table striped bordered hover responsive>
@@ -239,12 +221,9 @@ export default function Usuarios() {
         <tbody>
           {usuarios.length === 0 ? (
             <tr>
-              <th>ID</th>
-              <th>Nombre</th>
-              <th>Email</th>
-              <th>Rol</th>
-              <th>Estado</th>
-              <th>Acciones</th>
+              <td colSpan="6" className="text-center">
+                No hay usuarios registrados
+              </td>
             </tr>
           ) : (
             usuarios.map((usuario) => (
@@ -276,40 +255,10 @@ export default function Usuarios() {
                   </Button>
                 </td>
               </tr>
-            ) : (
-              usuarios.map((usuario) => (
-                <tr key={usuario.id}>
-                  <td>{usuario.id}</td>
-                  <td>{usuario.nombre}</td>
-                  <td>{usuario.email}</td>
-                  <td>{ROLE_LABEL[usuario.rol] ?? usuario.rol}</td>
-                  <td>
-                    <span className={`badge bg-${usuario.estado === 'activo' ? 'success' : 'secondary'}`}>
-                      {usuario.estado}
-                    </span>
-                  </td>
-                  <td>
-                    <Button
-                      variant="warning"
-                      size="sm"
-                      className="me-2"
-                      onClick={() => handleEditar(usuario)}
-                    >
-                      Editar
-                    </Button>
-                    <Button
-                      variant="danger"
-                      size="sm"
-                      onClick={() => handleEliminar(usuario.id)}
-                    >
-                      Eliminar
-                    </Button>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </Table>
+            ))
+          )}
+        </tbody>
+      </Table>
 
       {/* Modal para crear/editar */}
       <Modal show={showModal} onHide={() => setShowModal(false)}>
@@ -387,29 +336,30 @@ export default function Usuarios() {
               </Form.Control.Feedback>
             </Form.Group>
 
-              <Form.Group className="mb-3">
-                <Form.Label>Estado</Form.Label>
-                <Form.Select
-                  name="estado"
-                  value={usuarioActual.estado}
-                  onChange={handleChange}
-                >
-                  <option value="activo">Activo</option>
-                  <option value="inactivo">Inactivo</option>
-                </Form.Select>
-              </Form.Group>
-            </Form>
-          </Modal.Body>
-          <Modal.Footer>
-            <Button variant="secondary" onClick={() => setShowModal(false)}>
-              Cancelar
-            </Button>
-            <Button variant="primary" onClick={handleGuardar}>
-              {modoEdicion ? 'Actualizar' : 'Guardar'}
-            </Button>
-          </Modal.Footer>
-        </Modal>
-      </div>
+            <Form.Group className="mb-3">
+              <Form.Label>Estado</Form.Label>
+              <Form.Select
+                name="estado"
+                value={usuarioActual.estado}
+                onChange={handleChange}
+              >
+                <option value="activo">Activo</option>
+                <option value="inactivo">Inactivo</option>
+              </Form.Select>
+            </Form.Group>
+          </Form>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowModal(false)}>
+            Cancelar
+          </Button>
+          <Button variant="primary" onClick={handleGuardar}>
+            {modoEdicion ? 'Actualizar' : 'Guardar'}
+          </Button>
+        </Modal.Footer>
+      </Modal>
     </div>
   );
-};
+}
+
+export default Usuarios;
