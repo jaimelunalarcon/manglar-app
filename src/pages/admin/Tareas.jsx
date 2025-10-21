@@ -3,10 +3,14 @@ import Table from 'react-bootstrap/Table';
 
 function Tareas() {
   return (
-  <div className='p-4 bg-white border mt-3'>
-    <h2 className=''>Tareas (Admin)</h2>
-    <p className='mb-5'>Semana 06 oct - 12 oct <button className='float-end btn btn-success rounded-pill'>+ Agregar tarea</button></p>
-    <Table striped bordered hover responsive>
+    <div>
+    <div className='header-section'>
+      <button className='float-end btn mt-3 btn-success rounded-pill'>+ Agregar tarea</button>
+      <h1 className='mt-3'><i class="bi bi-check2-square me-2" aria-hidden="true"></i> Tareas</h1>
+      <p className='mb-4 subtitle'> <i className="bi bi-calendar me-3" aria-hidden="true"></i>Semana 20 oct - 26 oct</p>
+    </div>
+    <div className='p-4 bg-white rounded border mt-3'>
+    <Table striped bordered hover responsive className='mb-0'>
         <thead>
           <tr className='text-center'>
             <th>N°</th>
@@ -59,6 +63,7 @@ function Tareas() {
   
         </tbody>
       </Table>
+    </div>
   </div>
 )};
 

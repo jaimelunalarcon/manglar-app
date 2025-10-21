@@ -32,7 +32,7 @@ export default function BaseLayout() {
   return (
     <div className="d-flex flex-column min-vh-100">
       <Navbar brand="Mi App" links={user ? links : []} onLogout={user ? handleLogout : undefined} />
-      <main className="container py-4">
+      <main className="container py-5">
         <Outlet />
       </main>
       <Footer />

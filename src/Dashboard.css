@@ -5,10 +5,6 @@
     color: #555;
 }
 
-.dashboard-admin .card-tarea{
-    border-radius: 0 !important;
-}
-
 .dashboard-admin .card-tarea.active{
    border-left: solid 5px #12c129;
 }
@@ -21,10 +17,6 @@
     background-color: #f3f5f7;
 }
 
-.dashboard-admin h1 {
-    font-size: 2rem;
-}
-
-.dashboard-admin .actions-button:hover {
-    text-decoration: underline;
+.dashboard-admin .actions-button:hover{
+ text-decoration: underline;
 }

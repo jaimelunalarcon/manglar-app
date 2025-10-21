@@ -27,18 +27,19 @@ export default function Finanzas() {
 
   return (
     <div>
-      <h2 className="mb-3">
-        <i className="bi me-2 bi-bar-chart-fill" aria-hidden="true"></i>
-        Finanzas (Admin)
-      </h2>
+      <div className='header-section'>
+        <h1 className="mb-3 mt-3">
+          <i className="bi me-2 bi-bar-chart-fill" aria-hidden="true"></i> Finanzas hogar
+        </h1>
+      </div>
 
       <Row>
-        <Col sm={12} md={12}>
+        {/* <Col sm={12} md={12}>
           <div className="border bg-white p-4 rounded mb-4">
             <h2>Ingresos anuales</h2>
-            Aca va el gráfico <strong> Hijo del pico</strong>
+            Aca va el gráfico <strong> Mario culeco</strong>
           </div>
-        </Col>
+        </Col> */}
 
         <Row className="mb-3">
           <Col sm={12} md={4}>
@@ -153,7 +154,7 @@ export default function Finanzas() {
           </Table>
 
           <Button
-            className="my-2 float-end"
+            className="my-2 float-end rounded-pill"
             variant="success"
             onClick={() => setShowModal(true)}
           >
@@ -169,7 +170,7 @@ export default function Finanzas() {
       </Row>
 
       <div className="card border bg-white d-block p-3 rounded">
-        <div className="card-body">
+        <div className="card-body" style={{ marginTop: 15, borderTop: '1px dashed #333' }}>
           Total ingresos casa
           <span className="float-end">$210.000</span>
         </div>
