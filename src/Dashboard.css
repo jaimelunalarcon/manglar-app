@@ -16,3 +16,8 @@
 .dashboard-admin .card-tarea.lost{
    border-left: solid 5px #d45252;
 }
+
+.dashboard-admin .card-tarea:hover{
+    background-color: #f3f5f7;
+    cursor: pointer;
+}

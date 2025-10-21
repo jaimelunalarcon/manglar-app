@@ -1,0 +1,31 @@
+/* estado inicial (oculto + desplazado) */
+.reveal {
+  opacity: 0;
+  transform: translateY(14px);
+  transition:
+    opacity 420ms ease-out,
+    transform 420ms ease-out;
+  will-change: transform, opacity;
+}
+
+/* cuando entra al viewport */
+.reveal.in {
+  opacity: 1;
+  transform: none;
+}
+
+/* variantes opcionales */
+.reveal-left  { transform: translateX(-16px); }
+.reveal-right { transform: translateX(16px);  }
+.reveal-up    { transform: translateY(16px);  }
+.reveal-scale { transform: scale(0.98);       }
+
+/* accesibilidad: respetar reduce motion */
+@media (prefers-reduced-motion: reduce) {
+  .reveal, .reveal.in,
+  .reveal-left, .reveal-right, .reveal-up, .reveal-scale {
+    transition: none !important;
+    transform: none !important;
+    opacity: 1 !important;
+  }
+}
