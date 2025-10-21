@@ -3,7 +3,8 @@ import ReactDOM from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import AppRouter from './routes/AppRouter'
 import { AuthProvider } from './context/AuthContext'
-import 'bootstrap-icons/font/bootstrap-icons.css'   // <-- aquí
+import 'bootstrap-icons/font/bootstrap-icons.css'   
+import './reveal.css'  
 
 
 import 'bootstrap/dist/css/bootstrap.min.css'
