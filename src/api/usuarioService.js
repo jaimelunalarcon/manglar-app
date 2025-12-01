@@ -23,7 +23,8 @@ const usuarioService = {
    */
   obtenerPorRut: async (rut) => {
     try {
-      const response = await axiosInstance.get(`/usuarios/${rut}`);
+      const rutEncoded = encodeURIComponent(rut);
+      const response = await axiosInstance.get(`/usuarios/${rutEncoded}`);
       return response.data;
     } catch (error) {
       throw new Error(
@@ -56,7 +57,8 @@ const usuarioService = {
    */
   actualizar: async (rut, usuario) => {
     try {
-      const response = await axiosInstance.put(`/usuarios/${rut}`, usuario);
+      const rutEncoded = encodeURIComponent(rut);
+      const response = await axiosInstance.put(`/usuarios/${rutEncoded}`, usuario);
       return response.data;
     } catch (error) {
       const mensaje = error.response?.data?.message || error.response?.data || 'Error al actualizar usuario';
@@ -71,7 +73,8 @@ const usuarioService = {
    */
   eliminar: async (rut) => {
     try {
-      await axiosInstance.delete(`/usuarios/${rut}`);
+      const rutEncoded = encodeURIComponent(rut);
+      await axiosInstance.delete(`/usuarios/${rutEncoded}`);
     } catch (error) {
       const mensaje = error.response?.data?.message || error.response?.data || 'Error al eliminar usuario';
       throw new Error(mensaje);

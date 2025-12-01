@@ -1,19 +1,23 @@
 import React, { useState, useEffect } from 'react';
-import { Table, Button, Modal, Form } from 'react-bootstrap';
+import { Table, Button, Modal, Form, Alert, Spinner } from 'react-bootstrap';
+import usuarioService from '../../api/usuarioService';
 
 function Usuarios() {
   const [usuarios, setUsuarios] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [modoEdicion, setModoEdicion] = useState(false);
   const [usuarioActual, setUsuarioActual] = useState({
-    id: null,
     rut: '',
     nombre: '',
     email: '',
-    rol: '',
-    estado: 'activo'
+    password: '',
+    rol: 'ADMINISTRADOR',
+    estado: 'ACTIVO'
   });
   const [errores, setErrores] = useState({});
+  const [loading, setLoading] = useState(false);
+  const [loadingTable, setLoadingTable] = useState(true);
+  const [alertMessage, setAlertMessage] = useState({ show: false, message: '', variant: '' });
 
   // Validar RUT chileno
   const validarRUT = (rut) => {
@@ -63,31 +67,42 @@ function Usuarios() {
     return regex.test(email);
   };
 
-  // Cargar usuarios desde localStorage al iniciar
-  useEffect(() => {
-    const usuariosGuardados = localStorage.getItem('usuarios');
-    if (usuariosGuardados) {
-      setUsuarios(JSON.parse(usuariosGuardados));
-    }
-  }, []);
+  // Mostrar alerta temporal
+  const mostrarAlerta = (message, variant = 'success') => {
+    setAlertMessage({ show: true, message, variant });
+    setTimeout(() => {
+      setAlertMessage({ show: false, message: '', variant: '' });
+    }, 3000);
+  };
 
-  // Guardar usuarios en localStorage cada vez que cambien
-  useEffect(() => {
-    if (usuarios.length > 0) {
-      localStorage.setItem('usuarios', JSON.stringify(usuarios));
+  // Cargar usuarios desde el backend
+  const cargarUsuarios = async () => {
+    try {
+      setLoadingTable(true);
+      const data = await usuarioService.obtenerTodos();
+      setUsuarios(data);
+    } catch (error) {
+      mostrarAlerta(error.message, 'danger');
+    } finally {
+      setLoadingTable(false);
     }
-  }, [usuarios]);
+  };
+
+  // Cargar usuarios al iniciar
+  useEffect(() => {
+    cargarUsuarios();
+  }, []);
 
   // Abrir modal para crear
   const handleNuevo = () => {
     setModoEdicion(false);
     setUsuarioActual({
-      id: null,
       rut: '',
       nombre: '',
       email: '',
-      rol: '',
-      estado: 'activo'
+      password: '',
+      rol: 'ADMINISTRADOR',
+      estado: 'ACTIVO'
     });
     setErrores({});
     setShowModal(true);
@@ -96,20 +111,26 @@ function Usuarios() {
   // Abrir modal para editar
   const handleEditar = (usuario) => {
     setModoEdicion(true);
-    setUsuarioActual(usuario);
+    setUsuarioActual({
+      ...usuario,
+      password: '' // No mostrar la contraseña actual
+    });
     setErrores({});
     setShowModal(true);
   };
 
   // Guardar (crear o actualizar)
-  const handleGuardar = () => {
+  const handleGuardar = async () => {
     // Validaciones
     const nuevosErrores = {};
 
-    if (!usuarioActual.rut.trim()) {
-      nuevosErrores.rut = 'El RUT es obligatorio';
-    } else if (!validarRUT(usuarioActual.rut)) {
-      nuevosErrores.rut = 'El RUT no es válido';
+    // Validar RUT (solo al crear, no se puede cambiar al editar)
+    if (!modoEdicion) {
+      if (!usuarioActual.rut.trim()) {
+        nuevosErrores.rut = 'El RUT es obligatorio';
+      } else if (!validarRUT(usuarioActual.rut)) {
+        nuevosErrores.rut = 'El RUT no es válido';
+      }
     }
 
     if (!usuarioActual.nombre.trim()) {
@@ -122,6 +143,15 @@ function Usuarios() {
       nuevosErrores.email = 'El email no es válido';
     }
 
+    // Validar contraseña (solo al crear, no al editar)
+    if (!modoEdicion) {
+      if (!usuarioActual.password.trim()) {
+        nuevosErrores.password = 'La contraseña es obligatoria';
+      } else if (usuarioActual.password.length < 6) {
+        nuevosErrores.password = 'La contraseña debe tener al menos 6 caracteres';
+      }
+    }
+
     if (!usuarioActual.rol) {
       nuevosErrores.rol = 'El rol es obligatorio';
     }
@@ -132,42 +162,50 @@ function Usuarios() {
       return;
     }
 
-    // Verificar RUT duplicado
-    const rutLimpio = usuarioActual.rut.replace(/\./g, '').replace(/-/g, '');
-    const rutDuplicado = usuarios.some(u => 
-      u.id !== usuarioActual.id && 
-      u.rut.replace(/\./g, '').replace(/-/g, '') === rutLimpio
-    );
+    setLoading(true);
 
-    if (rutDuplicado) {
-      setErrores({ rut: 'Este RUT ya está registrado' });
-      return;
-    }
-
-    if (modoEdicion) {
-      // Actualizar usuario existente
-      setUsuarios(usuarios.map(u => 
-        u.id === usuarioActual.id ? usuarioActual : u
-      ));
-    } else {
-      // Crear nuevo usuario
-      const nuevoUsuario = {
-        ...usuarioActual,
-        id: Date.now() // ID único basado en timestamp
+    try {
+      // Preparar datos del usuario
+      const usuarioData = {
+        rut: usuarioActual.rut,
+        nombre: usuarioActual.nombre,
+        email: usuarioActual.email,
+        rol: usuarioActual.rol,
+        estado: usuarioActual.estado,
       };
-      setUsuarios([...usuarios, nuevoUsuario]);
-    }
 
-    setErrores({});
-    setShowModal(false);
+      // Solo incluir contraseña al CREAR
+      if (!modoEdicion) {
+        usuarioData.password = usuarioActual.password;
+      }
+
+      if (modoEdicion) {
+        await usuarioService.actualizar(usuarioActual.rut, usuarioData);
+        mostrarAlerta('Usuario actualizado exitosamente', 'success');
+      } else {
+        await usuarioService.crear(usuarioData);
+        mostrarAlerta('Usuario creado exitosamente', 'success');
+      }
+
+      setShowModal(false);
+      cargarUsuarios(); // Recargar la lista
+    } catch (error) {
+      mostrarAlerta(error.message, 'danger');
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Eliminar usuario
-  const handleEliminar = (id) => {
+  const handleEliminar = async (rut) => {
     if (window.confirm('¿Está seguro de eliminar este usuario?')) {
-      const nuevosUsuarios = usuarios.filter(u => u.id !== id);
-      setUsuarios(nuevosUsuarios);
-      localStorage.setItem('usuarios', JSON.stringify(nuevosUsuarios));
+      try {
+        await usuarioService.eliminar(rut);
+        mostrarAlerta('Usuario eliminado exitosamente', 'success');
+        cargarUsuarios(); // Recargar la lista
+      } catch (error) {
+        mostrarAlerta(error.message, 'danger');
+      }
     }
   };
 
@@ -198,6 +236,26 @@ function Usuarios() {
     }
   };
 
+  // Mapear nombre de rol para mostrar
+  const obtenerNombreRol = (rol) => {
+    const roles = {
+      'ADMINISTRADOR': 'Administrador',
+      'ARRENDATARIO': 'Arrendatario',
+      'SUPERVISOR': 'Supervisor'
+    };
+    return roles[rol] || rol;
+  };
+
+  // Mapear estado para mostrar
+  const obtenerNombreEstado = (estado) => {
+    const estados = {
+      'ACTIVO': 'Activo',
+      'INACTIVO': 'Inactivo',
+      'BLOQUEADO': 'Bloqueado'
+    };
+    return estados[estado] || estado;
+  };
+
   return (
     <div className="p-4 bg-white border mt-3">
       <div className="d-flex justify-content-between align-items-center mb-4">
@@ -207,58 +265,72 @@ function Usuarios() {
         </Button>
       </div>
 
-      <Table striped bordered hover responsive>
-        <thead>
-          <tr>
-            <th>RUT</th>
-            <th>Nombre</th>
-            <th>Email</th>
-            <th>Rol</th>
-            <th>Estado</th>
-            <th>Acciones</th>
-          </tr>
-        </thead>
-        <tbody>
-          {usuarios.length === 0 ? (
+      {alertMessage.show && (
+        <Alert variant={alertMessage.variant} dismissible onClose={() => setAlertMessage({ show: false })}>
+          {alertMessage.message}
+        </Alert>
+      )}
+
+      {loadingTable ? (
+        <div className="text-center my-5">
+          <Spinner animation="border" role="status">
+            <span className="visually-hidden">Cargando...</span>
+          </Spinner>
+        </div>
+      ) : (
+        <Table striped bordered hover responsive>
+          <thead>
             <tr>
-              <td colSpan="6" className="text-center">
-                No hay usuarios registrados
-              </td>
+              <th>RUT</th>
+              <th>Nombre</th>
+              <th>Email</th>
+              <th>Rol</th>
+              <th>Estado</th>
+              <th>Acciones</th>
             </tr>
-          ) : (
-            usuarios.map((usuario) => (
-              <tr key={usuario.id}>
-                <td>{usuario.rut}</td>
-                <td>{usuario.nombre}</td>
-                <td>{usuario.email}</td>
-                <td>{usuario.rol}</td>
-                <td>
-                  <span className={`badge bg-${usuario.estado === 'activo' ? 'success' : 'secondary'}`}>
-                    {usuario.estado}
-                  </span>
-                </td>
-                <td>
-                  <Button 
-                    variant="warning" 
-                    size="sm" 
-                    className="me-2"
-                    onClick={() => handleEditar(usuario)}
-                  >
-                    Editar
-                  </Button>
-                  <Button 
-                    variant="danger" 
-                    size="sm"
-                    onClick={() => handleEliminar(usuario.id)}
-                  >
-                    Eliminar
-                  </Button>
+          </thead>
+          <tbody>
+            {usuarios.length === 0 ? (
+              <tr>
+                <td colSpan="6" className="text-center">
+                  No hay usuarios registrados
                 </td>
               </tr>
-            ))
-          )}
-        </tbody>
-      </Table>
+            ) : (
+              usuarios.map((usuario) => (
+                <tr key={usuario.rut}>
+                  <td>{usuario.rut}</td>
+                  <td>{usuario.nombre}</td>
+                  <td>{usuario.email}</td>
+                  <td>{obtenerNombreRol(usuario.rol)}</td>
+                  <td>
+                    <span className={`badge bg-${usuario.estado === 'ACTIVO' ? 'success' : usuario.estado === 'INACTIVO' ? 'secondary' : 'danger'}`}>
+                      {obtenerNombreEstado(usuario.estado)}
+                    </span>
+                  </td>
+                  <td>
+                    <Button 
+                      variant="warning" 
+                      size="sm" 
+                      className="me-2"
+                      onClick={() => handleEditar(usuario)}
+                    >
+                      Editar
+                    </Button>
+                    <Button 
+                      variant="danger" 
+                      size="sm"
+                      onClick={() => handleEliminar(usuario.rut)}
+                    >
+                      Eliminar
+                    </Button>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </Table>
+      )}
 
       {/* Modal para crear/editar */}
       <Modal show={showModal} onHide={() => setShowModal(false)}>
@@ -280,13 +352,16 @@ function Usuarios() {
                 placeholder="Ej: 12345678-9"
                 isInvalid={!!errores.rut}
                 maxLength="12"
+                disabled={modoEdicion}
               />
               <Form.Control.Feedback type="invalid">
                 {errores.rut}
               </Form.Control.Feedback>
-              <Form.Text className="text-muted">
-                Ingrese el RUT, se formateará automáticamente
-              </Form.Text>
+              {!modoEdicion && (
+                <Form.Text className="text-muted">
+                  Ingrese el RUT, se formateará automáticamente
+                </Form.Text>
+              )}
             </Form.Group>
 
             <Form.Group className="mb-3">
@@ -319,6 +394,26 @@ function Usuarios() {
               </Form.Control.Feedback>
             </Form.Group>
 
+            {/* Solo mostrar contraseña al CREAR, no al EDITAR */}
+            {!modoEdicion && (
+              <Form.Group className="mb-3">
+                <Form.Label>
+                  Contraseña <span className="text-danger">*</span>
+                </Form.Label>
+                <Form.Control
+                  type="password"
+                  name="password"
+                  value={usuarioActual.password}
+                  onChange={handleChange}
+                  placeholder="Mínimo 6 caracteres"
+                  isInvalid={!!errores.password}
+                />
+                <Form.Control.Feedback type="invalid">
+                  {errores.password}
+                </Form.Control.Feedback>
+              </Form.Group>
+            )}
+
             <Form.Group className="mb-3">
               <Form.Label>Rol <span className="text-danger">*</span></Form.Label>
               <Form.Select
@@ -328,9 +423,9 @@ function Usuarios() {
                 isInvalid={!!errores.rol}
               >
                 <option value="">Seleccione un rol</option>
-                <option value="Administrador">Administrador</option>
-                <option value="Usuario">Usuario</option>
-                <option value="Supervisor">Supervisor</option>
+                <option value="ADMINISTRADOR">Administrador</option>
+                <option value="ARRENDATARIO">Arrendatario</option>
+                <option value="SUPERVISOR">Supervisor</option>
               </Form.Select>
               <Form.Control.Feedback type="invalid">
                 {errores.rol}
@@ -344,8 +439,9 @@ function Usuarios() {
                 value={usuarioActual.estado}
                 onChange={handleChange}
               >
-                <option value="activo">Activo</option>
-                <option value="inactivo">Inactivo</option>
+                <option value="ACTIVO">Activo</option>
+                <option value="INACTIVO">Inactivo</option>
+                <option value="BLOQUEADO">Bloqueado</option>
               </Form.Select>
             </Form.Group>
           </Form>
@@ -354,8 +450,8 @@ function Usuarios() {
           <Button variant="secondary" onClick={() => setShowModal(false)}>
             Cancelar
           </Button>
-          <Button variant="primary" onClick={handleGuardar}>
-            {modoEdicion ? 'Actualizar' : 'Guardar'}
+          <Button variant="primary" onClick={handleGuardar} disabled={loading}>
+            {loading ? 'Guardando...' : modoEdicion ? 'Actualizar' : 'Guardar'}
           </Button>
         </Modal.Footer>
       </Modal>
