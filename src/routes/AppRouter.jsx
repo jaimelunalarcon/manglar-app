@@ -15,7 +15,7 @@ import ArriDashboard from '../pages/arrendatario/Dashboard';
 import ArriTareas from '../pages/arrendatario/Tareas';
 import ArriFinanzas from '../pages/arrendatario/Finanzas';
 
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../context/authContext';
 
 function HomeRedirect() {
   const { user, isHydrating } = useAuth();

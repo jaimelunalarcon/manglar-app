@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Table, Form, Button, Badge } from 'react-bootstrap';
 import WeekRange from '../../components/WeekRange';          
-import { useAuth } from '../../context/AuthContext';          
+import { useAuth } from '../../context/authContext';          
 
 // ---- Config de tareas (puedes editar nombres, puntos y cupos) ----
 const TASKS_MASTER = [
