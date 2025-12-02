@@ -257,12 +257,20 @@ function Usuarios() {
   };
 
   return (
-    <div className="p-4 bg-white border mt-3">
-      <div className="d-flex justify-content-between align-items-center mb-4">
-        <h2 className="mb-0">Usuarios</h2>
-        <Button variant="primary" onClick={handleNuevo}>
+    <div>
+      <div className="header-section">
+             <Button variant="success" className='float-end rounded-pill rounded' onClick={handleNuevo}>
           + Nuevo Usuario
         </Button>
+              <h1 className="mt-3">
+                <i className="bi bi-people-fill me-2" aria-hidden="true"></i> Usuarios
+              </h1>
+             
+            </div>
+    <div className="p-4 bg-white rounded border mt-3">
+      <div className="d-flex justify-content-between align-items-center mb-4">
+        <h2 className="mb-0"></h2>
+        
       </div>
 
       {alertMessage.show && (
@@ -456,6 +464,8 @@ function Usuarios() {
         </Modal.Footer>
       </Modal>
     </div>
+  </div>
+
   );
 }
 
