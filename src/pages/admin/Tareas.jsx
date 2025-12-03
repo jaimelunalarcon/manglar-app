@@ -531,7 +531,9 @@ function Tareas() {
       {/* ---------- Modal ver reglas de tarea ---------- */}
       <Modal show={showReglasModal} onHide={() => setShowReglasModal(false)}>
         <Modal.Header closeButton>
-          <Modal.Title>Reglas de {tareaReglasActual.nombre}</Modal.Title>
+          <Modal.Title>
+            Reglas de {tareaReglasActual?.nombre || ''}
+          </Modal.Title>
         </Modal.Header>
         <Modal.Body>
           {tareaReglasActual ? (

@@ -11,7 +11,7 @@ export default function Dashboard() {
   return (
     <div className="dashboard-admin">
       <div className='header-section'>
-        <h1 className="mt-3"><i class="bi bi-speedometer2 me-2" aria-hidden="true"></i>Dashboard </h1>
+        <h1 className="mt-3"><i className="bi bi-speedometer2 me-2" aria-hidden="true"></i>Dashboard </h1>
         <p className="subtitle mb-5">
           <i className="bi bi-calendar me-3" aria-hidden="true"></i> <WeekRange startOn="monday" />
         </p>
