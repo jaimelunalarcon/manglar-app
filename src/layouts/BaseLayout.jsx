@@ -21,9 +21,9 @@ export default function BaseLayout() {
       { to: '/admin/usuarios', label: 'Usuarios',  icon: 'bi-people-fill' },
       ]
     : [
-        { to: '/arrendatario',          label: 'Dashboard' },
-        { to: '/arrendatario/tareas',   label: 'Tareas' },
-        { to: '/arrendatario/finanzas', label: 'Finanzas' },
+        { to: '/arrendatario',          label: 'Dashboard', icon: 'bi-speedometer2' },
+        { to: '/arrendatario/tareas',   label: 'Tareas',    icon: 'bi-check2-square' },
+        { to: '/arrendatario/finanzas', label: 'Finanzas',  icon: 'bi-bar-chart-fill'  },
       ];
 
   const handleLogout = () => {
