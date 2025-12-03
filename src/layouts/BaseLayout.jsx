@@ -4,6 +4,8 @@ import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import { useAuth } from '../context/authContext';
 
+
+
 export default function BaseLayout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
