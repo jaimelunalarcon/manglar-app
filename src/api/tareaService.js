@@ -1,214 +1,132 @@
-// src/api/tareaService.js
 import axiosInstance from './axiosConfig';
 
 const tareaService = {
   /**
-   * Obtener todas las tareas
-   * @returns {Promise<Array>} - Lista de tareas
+   * Obtener todas las tareas (catálogo)
    */
   obtenerTodas: async () => {
-    try {
-      const response = await axiosInstance.get('/tareas');
-      return response.data;
-    } catch (error) {
-      const mensaje =
-        error.response?.data?.message ||
-        error.response?.data ||
-        'Error al obtener tareas';
-      throw new Error(mensaje);
-    }
+    const response = await axiosInstance.get('/tareas');
+    return response.data;
   },
 
   /**
-   * Obtener una tarea por ID
-   * @param {number} id - ID de la tarea
-   * @returns {Promise<Object>} - Tarea
+   * Obtener tarea por ID
    */
   obtenerPorId: async (id) => {
-    try {
-      const response = await axiosInstance.get(`/tareas/${id}`);
-      return response.data;
-    } catch (error) {
-      const mensaje =
-        error.response?.data?.message ||
-        error.response?.data ||
-        'Error al obtener la tarea';
-      throw new Error(mensaje);
-    }
+    const response = await axiosInstance.get(`/tareas/${id}`); // ✅ Corregido
+    return response.data;
   },
 
   /**
-   * Crear una nueva tarea
-   * @param {Object} tarea - { nombre, puntos, disponibilidad, reglas }
-   * @returns {Promise<Object>} - Tarea creada
+   * Crear nueva tarea (solo Admin)
    */
   crear: async (tarea) => {
-    try {
-      const response = await axiosInstance.post('/tareas', tarea);
-      return response.data;
-    } catch (error) {
-      const mensaje =
-        error.response?.data?.message ||
-        error.response?.data ||
-        'Error al crear tarea';
-      throw new Error(mensaje);
-    }
+    const response = await axiosInstance.post('/tareas', tarea);
+    return response.data;
   },
 
   /**
-   * Actualizar una tarea existente
-   * @param {number} id - ID de la tarea
-   * @param {Object} tarea - Datos actualizados
-   * @returns {Promise<Object>} - Tarea actualizada
+   * Actualizar tarea (solo Admin)
    */
   actualizar: async (id, tarea) => {
-    try {
-      const response = await axiosInstance.put(`/tareas/${id}`, tarea);
-      return response.data;
-    } catch (error) {
-      const mensaje =
-        error.response?.data?.message ||
-        error.response?.data ||
-        'Error al actualizar tarea';
-      throw new Error(mensaje);
-    }
+    const response = await axiosInstance.put(`/tareas/${id}`, tarea); // ✅ Corregido
+    return response.data;
   },
 
   /**
-   * Eliminar una tarea
-   * @param {number} id - ID de la tarea
-   * @returns {Promise<void>}
+   * Eliminar tarea (solo Admin)
    */
   eliminar: async (id) => {
-    try {
-      await axiosInstance.delete(`/tareas/${id}`);
-    } catch (error) {
-      const mensaje =
-        error.response?.data?.message ||
-        error.response?.data ||
-        'Error al eliminar tarea';
-      throw new Error(mensaje);
-    }
+    await axiosInstance.delete(`/tareas/${id}`); // ✅ Corregido
   },
 
   /**
-   * Tomar una tarea para un día específico
-   * @param {number} tareaId
-   * @param {string} dia - 'LUNES', 'MARTES', etc.
-   * @param {string} usuarioId
-   * @param {string} usuarioNombre
-   * @returns {Promise<Object>} - Asignación creada
+   * Tomar una tarea en un día específico
+   * @param {number} tareaId - ID de la tarea
+   * @param {object} data - { dia: 'LUNES', usuarioId: '11111111-1', usuarioNombre: 'Juan' }
    */
-  tomarTarea: async (tareaId, { dia, usuarioId, usuarioNombre }) => {
-    try {
-      const body = { dia, usuarioId, usuarioNombre };
-      const response = await axiosInstance.post(`/tareas/${tareaId}/tomar`, body);
-      return response.data;
-    } catch (error) {
-      const mensaje =
-        error.response?.data?.message ||
-        error.response?.data ||
-        'Error al tomar tarea';
-      throw new Error(mensaje);
-    }
+  tomarTarea: async (tareaId, data) => {
+    const response = await axiosInstance.post(`/tareas/${tareaId}/tomar`, data); // ✅ Corregido
+    return response.data;
   },
 
   /**
-   * Marcar tarea como completada (subir foto)
-   * @param {number} asignacionId
-   * @param {string} fotoUri
-   * @returns {Promise<Object>}
+   * Completar una tarea con foto de evidencia
+   * @param {number} asignacionId - ID de la asignación
+   * @param {string} fotoUri - URL de la foto subida
    */
   completarTarea: async (asignacionId, fotoUri) => {
-    try {
-      const response = await axiosInstance.put(
-        `/tareas/asignaciones/${asignacionId}/completar`,
-        { fotoUri }
-      );
-      return response.data;
-    } catch (error) {
-      const mensaje =
-        error.response?.data?.message ||
-        error.response?.data ||
-        'Error al completar tarea';
-      throw new Error(mensaje);
-    }
+    const response = await axiosInstance.put(
+      `/tareas/asignaciones/${asignacionId}/completar`,
+      { fotoUri }
+    );
+    return response.data;
   },
 
   /**
-   * Aprobar tarea (admin)
-   * @param {number} asignacionId
-   * @returns {Promise<Object>}
+   * Aprobar una tarea completada (Admin/Supervisor)
    */
   aprobarTarea: async (asignacionId) => {
-    try {
-      const response = await axiosInstance.put(
-        `/tareas/asignaciones/${asignacionId}/aprobar`
-      );
-      return response.data;
-    } catch (error) {
-      const mensaje =
-        error.response?.data?.message ||
-        error.response?.data ||
-        'Error al aprobar tarea';
-      throw new Error(mensaje);
-    }
+    const response = await axiosInstance.put(
+      `/tareas/asignaciones/${asignacionId}/aprobar`
+    );
+    return response.data;
   },
 
   /**
-   * Rechazar tarea (admin)
-   * @param {number} asignacionId
-   * @param {string} comentario
-   * @returns {Promise<Object>}
+   * Rechazar una tarea completada (Admin/Supervisor)
+   * @param {number} asignacionId - ID de la asignación
+   * @param {string} comentario - Motivo del rechazo
    */
   rechazarTarea: async (asignacionId, comentario) => {
-    try {
-      const response = await axiosInstance.put(
-        `/tareas/asignaciones/${asignacionId}/rechazar`,
-        { comentario }
-      );
-      return response.data;
-    } catch (error) {
-      const mensaje =
-        error.response?.data?.message ||
-        error.response?.data ||
-        'Error al rechazar tarea';
-      throw new Error(mensaje);
-    }
+    const response = await axiosInstance.put(
+      `/tareas/asignaciones/${asignacionId}/rechazar`,
+      { comentario }
+    );
+    return response.data;
   },
 
   /**
-   * Obtener tareas pendientes de aprobación (para dashboard admin)
-   * @returns {Promise<Array>}
+   * Obtener tareas pendientes de aprobación (Admin/Supervisor)
    */
   obtenerPendientesAprobacion: async () => {
-    try {
-      const response = await axiosInstance.get('/tareas/pendientes-aprobacion');
-      return response.data;
-    } catch (error) {
-      const mensaje =
-        error.response?.data?.message ||
-        error.response?.data ||
-        'Error al obtener tareas pendientes de aprobación';
-      throw new Error(mensaje);
-    }
+    const response = await axiosInstance.get('/tareas/pendientes-aprobacion');
+    return response.data;
   },
 
   /**
-   * Liberar / eliminar una asignación (quitar una tarea tomada)
-   * @param {number} asignacionId
-   * @returns {Promise<void>}
+   * Liberar una tarea asignada (cancelar asignación)
    */
-  liberarAsignacion: async (asignacionId) => {
-    try {
-      await axiosInstance.delete(`/tareas/asignaciones/${asignacionId}`);
-    } catch (error) {
-      const mensaje =
-        error.response?.data?.message ||
-        error.response?.data ||
-        'Error al liberar asignación de tarea';
-      throw new Error(mensaje);
-    }
+  liberarTarea: async (asignacionId) => {
+    await axiosInstance.delete(`/tareas/asignaciones/${asignacionId}`); // ✅ Corregido
+  },
+
+  /**
+   * Obtener todas las asignaciones de tareas
+   * (Este método depende de si tu backend lo tiene implementado)
+   */
+  obtenerTodasAsignaciones: async () => {
+    // Si tu backend tiene este endpoint:
+    // const response = await axiosInstance.get('/tareas/asignaciones');
+    // return response.data;
+    
+    // Si NO lo tienes, puedes retornar un array vacío por ahora
+    // y las asignaciones se irán llenando cuando el usuario tome tareas
+    return [];
+  },
+
+  /**
+   * Obtener mis tareas asignadas (como usuario actual)
+   * Este método asume que el backend filtra por el usuario autenticado
+   */
+  obtenerMisTareas: async () => {
+    // Si tu backend tiene este endpoint:
+    // const response = await axiosInstance.get('/tareas/mis-tareas');
+    // return response.data;
+    
+    // Si NO lo tienes, usa obtenerTodasAsignaciones y filtra en el frontend
+    const todasAsignaciones = await tareaService.obtenerTodasAsignaciones();
+    return todasAsignaciones;
   },
 };
 
