@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Table, Button, Modal, Form, Alert, Spinner } from 'react-bootstrap';
-import usuarioService from '../api/usuarioService';
+import usuarioService from '../../api/usuarioService';
 
 function Usuarios() {
   const [usuarios, setUsuarios] = useState([]);
