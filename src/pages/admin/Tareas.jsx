@@ -317,12 +317,7 @@ export default function Tareas() {
   return (
     <div>
       <div className="header-section">
-        <Button
-          className="float-end rounded-pill btn btn-success mt-3"
-          onClick={handleNuevaTarea}
-        >
-          + Nueva tarea
-        </Button>
+     
         <h1 className="mt-3">
           <i className="bi bi-check2-square me-2" aria-hidden="true"></i>
           Tareas
@@ -392,7 +387,7 @@ export default function Tareas() {
                       if (asignacion) {
                         return (
                           <td key={d.key}>
-                            <Badge bg="primary">
+                            <Badge bg="success" className="rounded-pill">
                               {asignacion.usuarioNombre}
                               {esAdmin && (
                                 <button
@@ -440,8 +435,15 @@ export default function Tareas() {
 
       {/* --------- Listado / CRUD de tareas --------- */}
       <div className="p-4 bg-white rounded border mt-5 mb-4">
+        <div className='w-100 mt-2 mb-4'>
+           <Button
+          className="float-end rounded-pill btn btn-success"
+          onClick={handleNuevaTarea}
+        >
+          + Nueva tarea
+        </Button>
         <h3 className="mb-3">Listado de tareas</h3>
-
+        </div>
         {loadingTareas ? (
           <div className="text-center my-5">
             <Spinner animation="border" role="status">
