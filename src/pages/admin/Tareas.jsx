@@ -1,9 +1,10 @@
+// src/pages/admin/Tareas.jsx
 import React, { useEffect, useState, useMemo } from 'react';
 import { Table, Button, Modal, Form, Spinner, Alert, Badge } from 'react-bootstrap';
 import tareaService from '../../api/tareaService';
-import { useAuth } from '../../context/AuthContext'; // ajusta ruta si es distinta
+import { useAuth } from '../../context/authContext';
 
-// Días de la semana (clave lógica + etiqueta)
+// Días de la semana (clave lógica + etiqueta visual)
 const DIAS = [
   { key: 'LUNES', label: 'Lunes' },
   { key: 'MARTES', label: 'Martes' },
@@ -14,14 +15,18 @@ const DIAS = [
   { key: 'DOMINGO', label: 'Domingo' },
 ];
 
-function Tareas() {
-  const { user } = useAuth(); // p.ej. { username, name, role }
+export default function Tareas() {
+  const { user } = useAuth(); // { username, nombre, email, role, ... }
 
   // ---------- Estado catálogo de tareas ----------
   const [tareas, setTareas] = useState([]);
   const [loadingTareas, setLoadingTareas] = useState(true);
   const [errorTareas, setErrorTareas] = useState('');
-  const [alertMessage, setAlertMessage] = useState({ show: false, message: '', variant: '' });
+  const [alertMessage, setAlertMessage] = useState({
+    show: false,
+    message: '',
+    variant: '',
+  });
 
   const [showModal, setShowModal] = useState(false);
   const [modoEdicion, setModoEdicion] = useState(false);
@@ -34,29 +39,31 @@ function Tareas() {
   });
   const [errores, setErrores] = useState({});
 
-  // ---------- Estado para toma de tareas semanal (solo front de momento) ----------
-  // estructura: { [tareaId]: { [diaKey]: { usuarioId, usuarioNombre } } }
+  // ---------- Estado asignaciones semanales ----------
+  // estructura: { [tareaId]: { [diaKey]: { asignacionId, usuarioId, usuarioNombre } } }
   const [asignacionesSemana, setAsignacionesSemana] = useState({});
 
-  // ---------- Estado para modal de reglas ----------
+  // Modal de reglas
   const [showReglasModal, setShowReglasModal] = useState(false);
   const [tareaReglasActual, setTareaReglasActual] = useState(null);
 
-  // helper: nombre a mostrar del usuario actual
+  // ---------- Datos derivados ----------
   const usuarioNombreActual = useMemo(() => {
     if (!user) return 'Anónimo';
-    // intenta usar user.name; si no existe, usa username o email
-    return user.name || user.nombre || user.username || user.email || 'Usuario';
+    return (
+      user.name ||
+      user.nombre ||
+      user.username ||
+      user.email ||
+      'Usuario'
+    );
   }, [user]);
 
   const esAdmin = useMemo(() => {
     if (!user) return false;
-    // adapta según tu AuthContext
-    // si en AuthContext usas role: 'admin' / 'arrendatario'
     if (user.role) {
-      return user.role.toLowerCase() === 'admin';
+      return String(user.role).toLowerCase() === 'admin';
     }
-    // si en backend envías rol tipo 'ADMINISTRADOR'
     if (user.rol) {
       return String(user.rol).toUpperCase() === 'ADMINISTRADOR';
     }
@@ -70,6 +77,8 @@ function Tareas() {
       setAlertMessage({ show: false, message: '', variant: '' });
     }, 3000);
   };
+
+  const normalizarDia = (diaBack) => String(diaBack || '').toUpperCase();
 
   const cargarTareas = async () => {
     try {
@@ -86,11 +95,43 @@ function Tareas() {
     }
   };
 
+  const cargarAsignaciones = async () => {
+    try {
+      const data = await tareaService.obtenerAsignaciones();
+      const mapa = {};
+
+      data.forEach((a) => {
+        const tareaId = a.tarea?.id ?? a.tareaId ?? a.tarea_id;
+        const diaKey = normalizarDia(a.dia);
+
+        if (!tareaId || !diaKey) return;
+
+        if (!mapa[tareaId]) {
+          mapa[tareaId] = {};
+        }
+
+        mapa[tareaId][diaKey] = {
+          asignacionId: a.id,
+          usuarioId: a.usuarioId,
+          usuarioNombre: a.usuarioNombre,
+        };
+      });
+
+      setAsignacionesSemana(mapa);
+    } catch (err) {
+      console.error('Error al cargar asignaciones:', err);
+    }
+  };
+
   useEffect(() => {
-    cargarTareas();
+    const init = async () => {
+      await cargarTareas();
+      await cargarAsignaciones();
+    };
+    init();
   }, []);
 
-  // ---------- CRUD de tareas (tabla catálogo) ----------
+  // ---------- CRUD de tareas (catálogo) ----------
   const handleNuevaTarea = () => {
     setModoEdicion(false);
     setTareaActual({
@@ -113,15 +154,17 @@ function Tareas() {
 
   const handleEliminarTarea = async (id) => {
     if (!window.confirm('¿Seguro que deseas eliminar esta tarea?')) return;
+
     try {
       await tareaService.eliminar(id);
       mostrarAlerta('Tarea eliminada exitosamente', 'success');
-      // también limpiamos asignaciones de esa tarea
+
       setAsignacionesSemana((prev) => {
         const copia = { ...prev };
         delete copia[id];
         return copia;
       });
+
       cargarTareas();
     } catch (err) {
       console.error(err);
@@ -131,9 +174,13 @@ function Tareas() {
 
   const handleChangeTarea = (e) => {
     const { name, value } = e.target;
+
     if (name === 'puntos' || name === 'disponibilidad') {
       const num = parseInt(value, 10);
-      setTareaActual((prev) => ({ ...prev, [name]: Number.isNaN(num) ? 0 : num }));
+      setTareaActual((prev) => ({
+        ...prev,
+        [name]: Number.isNaN(num) ? 0 : num,
+      }));
     } else {
       setTareaActual((prev) => ({ ...prev, [name]: value }));
     }
@@ -169,17 +216,17 @@ function Tareas() {
         await tareaService.crear(tareaActual);
         mostrarAlerta('Tarea creada exitosamente', 'success');
       }
+
       setShowModal(false);
       cargarTareas();
     } catch (err) {
       console.error(err);
-      mostrarAlerta('No se pudo guardar la tarea', 'danger');
+      const mensaje = err.message || 'No se pudo guardar la tarea';
+      mostrarAlerta(mensaje, 'danger');
     }
   };
 
-  // ---------- Lógica de toma de tareas semanal (solo front de momento) ----------
-
-  // cuántas veces está ya asignada una tarea en la semana actual (todos los días)
+  // ---------- Lógica de toma/liberación de tareas ----------
   const contarAsignacionesTarea = (tareaId) => {
     const porTarea = asignacionesSemana[tareaId];
     if (!porTarea) return 0;
@@ -191,57 +238,77 @@ function Tareas() {
     return Math.max(0, (tarea.disponibilidad || 0) - usadas);
   };
 
-  const handleTomarTareaDia = (tarea, diaKey) => {
+  const handleTomarTareaDia = async (tarea, diaKey) => {
     if (!user) {
       alert('Debes iniciar sesión para tomar una tarea');
       return;
     }
 
-    // si ya está asignada ese día, no hacemos nada (en UI se muestra badge)
-    const porTarea = asignacionesSemana[tarea.id] || {};
-    if (porTarea[diaKey]) {
-      return;
-    }
-
-    if (disponibilidadRestante(tarea) <= 0) {
-      alert('No hay disponibilidad para esta tarea esta semana');
-      return;
-    }
-
-    setAsignacionesSemana((prev) => {
-      const copia = { ...prev };
-      const actualPorTarea = copia[tarea.id] ? { ...copia[tarea.id] } : {};
-
-      actualPorTarea[diaKey] = {
-        usuarioId: user.username || user.email || 'desconocido',
+    try {
+      const asignacion = await tareaService.tomarTarea(tarea.id, {
+        dia: diaKey,
+        usuarioId: user.username || user.email || user.rut || 'desconocido',
         usuarioNombre: usuarioNombreActual,
-      };
+      });
 
-      copia[tarea.id] = actualPorTarea;
-      return copia;
-    });
+      setAsignacionesSemana((prev) => {
+        const copia = { ...prev };
+        const porTarea = copia[tarea.id] ? { ...copia[tarea.id] } : {};
+        const diaNorm = normalizarDia(asignacion.dia);
+
+        porTarea[diaNorm] = {
+          asignacionId: asignacion.id,
+          usuarioId: asignacion.usuarioId,
+          usuarioNombre: asignacion.usuarioNombre,
+        };
+
+        copia[tarea.id] = porTarea;
+        return copia;
+      });
+
+      mostrarAlerta('Tarea tomada correctamente', 'success');
+    } catch (err) {
+      console.error('Error al tomar tarea:', err);
+      const mensaje = err.message || 'No se pudo tomar la tarea';
+      mostrarAlerta(mensaje, 'danger');
+    }
   };
 
-  const handleLiberarTareaDia = (tareaId, diaKey) => {
-    setAsignacionesSemana((prev) => {
-      const copia = { ...prev };
-      const porTarea = copia[tareaId];
-      if (!porTarea || !porTarea[diaKey]) return prev;
+  const handleLiberarTareaDia = async (tareaId, diaKey) => {
+    const porTarea = asignacionesSemana[tareaId];
+    if (!porTarea || !porTarea[diaKey]) return;
 
-      const nuevoPorTarea = { ...porTarea };
-      delete nuevoPorTarea[diaKey];
+    const { asignacionId } = porTarea[diaKey];
 
-      if (Object.keys(nuevoPorTarea).length === 0) {
-        delete copia[tareaId];
-      } else {
-        copia[tareaId] = nuevoPorTarea;
-      }
-      return copia;
-    });
+    try {
+      await tareaService.liberarAsignacion(asignacionId);
+
+      setAsignacionesSemana((prev) => {
+        const copia = { ...prev };
+        const porTareaPrev = copia[tareaId];
+        if (!porTareaPrev) return prev;
+
+        const nuevoPorTarea = { ...porTareaPrev };
+        delete nuevoPorTarea[diaKey];
+
+        if (Object.keys(nuevoPorTarea).length === 0) {
+          delete copia[tareaId];
+        } else {
+          copia[tareaId] = nuevoPorTarea;
+        }
+        return copia;
+      });
+
+      mostrarAlerta('Tarea liberada correctamente', 'success');
+    } catch (err) {
+      console.error('Error al liberar tarea:', err);
+      const mensaje = err.message || 'No se pudo liberar la tarea';
+      mostrarAlerta(mensaje, 'danger');
+    }
   };
 
-  // ---------- Mostrar reglas en modal ----------
-  const handleMostrarReglas = (tarea) => {
+  // ---------- Modal de reglas ----------
+  const abrirModalReglas = (tarea) => {
     setTareaReglasActual(tarea);
     setShowReglasModal(true);
   };
@@ -260,26 +327,22 @@ function Tareas() {
           <i className="bi bi-check2-square me-2" aria-hidden="true"></i>
           Tareas
         </h1>
-        {/* Aquí después puedes conectar WeekRange */}
-        {/* <p className="mb-4 subtitle">
-          <i className="bi bi-calendar me-3" aria-hidden="true"></i>
-          Semana 20 oct - 26 oct
-        </p> */}
       </div>
 
-      {/* Alertas */}
       {alertMessage.show && (
         <Alert
           className="mt-3"
           variant={alertMessage.variant}
           dismissible
-          onClose={() => setAlertMessage({ show: false, message: '', variant: '' })}
+          onClose={() =>
+            setAlertMessage({ show: false, message: '', variant: '' })
+          }
         >
           {alertMessage.message}
         </Alert>
       )}
 
-      {/* ---------- Tabla de toma de tareas semanal ---------- */}
+      {/* --------- Tabla de toma de tareas semanal --------- */}
       <div className="p-4 mt-5 bg-white rounded border">
         <div className="d-flex justify-content-between align-items-center mb-3">
           <h3 className="mb-0">Toma de tareas semanal</h3>
@@ -291,7 +354,7 @@ function Tareas() {
 
         {tareas.length === 0 ? (
           <div className="text-center text-muted">
-            Primero configura tareas en el catálogo inferior.
+            Primero configura tareas en el listado inferior.
           </div>
         ) : (
           <Table striped bordered hover responsive className="mb-0">
@@ -314,9 +377,8 @@ function Tareas() {
                     <td className="text-start">
                       <button
                         type="button"
-                        className="btn btn-link p-0 text-primary"
-                        style={{ textDecoration: 'underline', cursor: 'pointer' }}
-                        onClick={() => handleMostrarReglas(t)}
+                        className="btn btn-link p-0 text-start"
+                        onClick={() => abrirModalReglas(t)}
                       >
                         {t.nombre}
                       </button>
@@ -336,7 +398,9 @@ function Tareas() {
                                 <button
                                   type="button"
                                   className="btn btn-sm btn-link text-white ms-1 p-0"
-                                  onClick={() => handleLiberarTareaDia(t.id, d.key)}
+                                  onClick={() =>
+                                    handleLiberarTareaDia(t.id, d.key)
+                                  }
                                   title="Quitar tarea"
                                 >
                                   ×
@@ -359,7 +423,6 @@ function Tareas() {
                               if (e.target.checked) {
                                 handleTomarTareaDia(t, d.key);
                               } else {
-                                // si se desmarca y ya estaba asignada (raro en este flujo), la liberamos
                                 handleLiberarTareaDia(t.id, d.key);
                               }
                             }}
@@ -375,7 +438,7 @@ function Tareas() {
         )}
       </div>
 
-      {/* ---------- Tabla listado de tareas (catálogo) ---------- */}
+      {/* --------- Listado / CRUD de tareas --------- */}
       <div className="p-4 bg-white rounded border mt-5 mb-4">
         <h3 className="mb-3">Listado de tareas</h3>
 
@@ -393,7 +456,7 @@ function Tareas() {
               <tr className="text-center">
                 <th>ID</th>
                 <th>Nombre</th>
-                <th>Puntos</th>
+                <th>Pts</th>
                 <th>Disponibilidad semanal</th>
                 <th>Reglas</th>
                 <th>Acciones</th>
@@ -410,11 +473,27 @@ function Tareas() {
                 tareas.map((t) => (
                   <tr key={t.id} className="text-center">
                     <td>{t.id}</td>
-                    <td>{t.nombre}</td>
+                    <td className="text-start">
+                      <button
+                        type="button"
+                        className="btn btn-link p-0 text-start"
+                        onClick={() => abrirModalReglas(t)}
+                      >
+                        {t.nombre}
+                      </button>
+                    </td>
                     <td>{t.puntos}</td>
                     <td>{t.disponibilidad}</td>
                     <td className="text-start">
-                      {t.reglas ? t.reglas : <span className="text-muted">—</span>}
+                      {t.reglas && t.reglas.trim() ? (
+                        <span>
+                          {t.reglas.length > 60
+                            ? t.reglas.slice(0, 60) + '…'
+                            : t.reglas}
+                        </span>
+                      ) : (
+                        <span className="text-muted">—</span>
+                      )}
                     </td>
                     <td>
                       <Button
@@ -528,22 +607,20 @@ function Tareas() {
         </Modal.Footer>
       </Modal>
 
-      {/* ---------- Modal ver reglas de tarea ---------- */}
+      {/* ---------- Modal de reglas ---------- */}
       <Modal show={showReglasModal} onHide={() => setShowReglasModal(false)}>
         <Modal.Header closeButton>
           <Modal.Title>
-            Reglas de {tareaReglasActual?.nombre || ''}
+            Reglas de {tareaReglasActual?.nombre || 'tarea'}
           </Modal.Title>
         </Modal.Header>
         <Modal.Body>
           {tareaReglasActual ? (
-            <>
-              <p className="mt-3" style={{ whiteSpace: 'pre-wrap' }}>
-                {tareaReglasActual.reglas && tareaReglasActual.reglas.trim()
-                  ? tareaReglasActual.reglas
-                  : 'Esta tarea no tiene reglas definidas.'}
-              </p>
-            </>
+            <p className="mt-3" style={{ whiteSpace: 'pre-wrap' }}>
+              {tareaReglasActual.reglas && tareaReglasActual.reglas.trim()
+                ? tareaReglasActual.reglas
+                : 'Esta tarea no tiene reglas definidas.'}
+            </p>
           ) : (
             <p>Cargando…</p>
           )}
@@ -557,5 +634,3 @@ function Tareas() {
     </div>
   );
 }
-
-export default Tareas;
