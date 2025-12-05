@@ -108,8 +108,9 @@ const tareaService = {
   },
 
   /**
-   * Obtener todas las asignaciones (admin + filtrado en front)
+   * Obtener todas las asignaciones (sin filtro)
    * backend: GET /api/tareas/asignaciones
+   * Usado en el Dashboard admin.
    */
   obtenerAsignaciones: async () => {
     try {
@@ -120,6 +121,30 @@ const tareaService = {
         error.response?.data?.message ||
         error.response?.data ||
         'Error al obtener asignaciones';
+      throw new Error(mensaje);
+    }
+  },
+
+  /**
+   * Obtener asignaciones filtradas por semana (histórico)
+   * backend: GET /api/tareas/asignaciones-admin?desde=YYYY-MM-DD&hasta=YYYY-MM-DD
+   * Usado en Tareas.jsx con el select de semanas.
+   */
+  obtenerAsignacionesPorSemana: async ({ desde, hasta } = {}) => {
+    try {
+      const params = {};
+      if (desde) params.desde = desde;
+      if (hasta) params.hasta = hasta;
+
+      const response = await axiosInstance.get('/tareas/asignaciones-admin', {
+        params,
+      });
+      return response.data;
+    } catch (error) {
+      const mensaje =
+        error.response?.data?.message ||
+        error.response?.data ||
+        'Error al obtener asignaciones por semana';
       throw new Error(mensaje);
     }
   },
