@@ -1,4 +1,3 @@
-// src/api/tareaService.js
 import axiosInstance from './axiosConfig';
 
 const tareaService = {
@@ -82,8 +81,7 @@ const tareaService = {
         usuarioId,
         usuarioNombre,
       });
-      // devuelve AsignacionTarea
-      return response.data;
+      return response.data; // AsignacionTarea
     } catch (error) {
       const mensaje =
         error.response?.data?.message ||
@@ -109,6 +107,10 @@ const tareaService = {
     }
   },
 
+  /**
+   * Obtener todas las asignaciones (admin + filtrado en front)
+   * backend: GET /api/tareas/asignaciones
+   */
   obtenerAsignaciones: async () => {
     try {
       const response = await axiosInstance.get('/tareas/asignaciones');
@@ -123,18 +125,62 @@ const tareaService = {
   },
 
   /**
-   * (Para más adelante) Obtener tareas pendientes de aprobación
-   * backend: GET /api/tareas/pendientes-aprobacion
+   * Marcar una asignación como completada (envío de "evidencia")
+   * backend: PUT /api/tareas/asignaciones/{asignacionId}/completar
+   * body: { fotoUri }
    */
-  obtenerPendientesAprobacion: async () => {
+  completarTarea: async (asignacionId, fotoUri) => {
     try {
-      const response = await axiosInstance.get('/tareas/pendientes-aprobacion');
+      const response = await axiosInstance.put(
+        `/tareas/asignaciones/${asignacionId}/completar`,
+        { fotoUri }
+      );
       return response.data;
     } catch (error) {
       const mensaje =
         error.response?.data?.message ||
         error.response?.data ||
-        'Error al obtener tareas pendientes';
+        'Error al completar la tarea';
+      throw new Error(mensaje);
+    }
+  },
+
+  /**
+   * Aprobar una asignación (admin)
+   * backend: PUT /api/tareas/asignaciones/{id}/aprobar
+   */
+  aprobarAsignacion: async (id) => {
+    try {
+      const response = await axiosInstance.put(
+        `/tareas/asignaciones/${id}/aprobar`
+      );
+      return response.data;
+    } catch (error) {
+      const mensaje =
+        error.response?.data?.message ||
+        error.response?.data ||
+        'Error al aprobar asignación';
+      throw new Error(mensaje);
+    }
+  },
+
+  /**
+   * Marcar como no cumplida / rechazada (admin)
+   * backend: PUT /api/tareas/asignaciones/{id}/rechazar
+   * body: { comentario }
+   */
+  marcarNoCumplida: async (id) => {
+    try {
+      const response = await axiosInstance.put(
+        `/tareas/asignaciones/${id}/rechazar`,
+        { comentario: 'Marcada como no cumplida por el administrador.' }
+      );
+      return response.data;
+    } catch (error) {
+      const mensaje =
+        error.response?.data?.message ||
+        error.response?.data ||
+        'Error al marcar como no cumplida';
       throw new Error(mensaje);
     }
   },

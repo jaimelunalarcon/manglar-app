@@ -5,18 +5,27 @@
     color: #555;
 }
 
-.dashboard-admin .card-tarea.active{
-   border-left: solid 5px #12c129;
+
+/* Base */
+.card-tarea {
+    border-left: 5px solid #ccc;
 }
 
-.dashboard-admin .card-tarea.lost{
-   border-left: solid 5px #d45252;
+.state-tomada {
+    border-left: #a9a8a7 solid 5px !important;
 }
 
-.dashboard-admin .card-tarea:hover{
-    background-color: #f3f5f7;
+.state-aprobada {
+    border-left: #3ea44c solid 5px !important;
 }
 
+.state-pendiente-aprobacion {
+    border-left: #d5bd33 solid 5px !important;
+}
+
+.state-no-cumplida {
+    border-left: #dc3545 solid 5px !important;
+}
 
 .dashboard-admin .actions-button{
  font-size: 0.8rem;
