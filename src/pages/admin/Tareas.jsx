@@ -11,7 +11,6 @@ import {
 } from "react-bootstrap";
 import tareaService from "../../api/tareaService";
 import { useAuth } from "../../context/authContext";
-import dayjs from "dayjs";
 
 // Días de la semana (clave lógica + etiqueta visual)
 const DIAS = [
@@ -24,8 +23,58 @@ const DIAS = [
   { key: "DOMINGO", label: "Domingo" },
 ];
 
+// ---------- Helpers de fechas para semanas ----------
+const formatearFechaCorta = (date) => {
+  const d = new Date(date);
+  const dia = String(d.getDate()).padStart(2, "0");
+  const mes = String(d.getMonth() + 1).padStart(2, "0");
+  const año = String(d.getFullYear()).slice(-2);
+  return `${dia}-${mes}-${año}`;
+};
+
+const generarSemanas = (cantidad = 8) => {
+  const hoy = new Date();
+  const semanas = [];
+
+  for (let i = 0; i < cantidad; i++) {
+    const ref = new Date();
+    ref.setDate(hoy.getDate() - i * 7);
+
+    // Lunes como inicio de semana
+    const inicio = new Date(ref);
+    const diaSemana = inicio.getDay(); // 0=domingo, 1=lunes...
+    const diff = diaSemana === 0 ? -6 : 1 - diaSemana; // mover a lunes
+    inicio.setDate(inicio.getDate() + diff);
+    inicio.setHours(0, 0, 0, 0);
+
+    const fin = new Date(inicio);
+    fin.setDate(fin.getDate() + 6);
+    fin.setHours(23, 59, 59, 999);
+
+    // Para el backend usamos [desde, hastaExclusive)
+    const desde = inicio.toISOString().slice(0, 10);
+    const hastaExclusive = new Date(fin);
+    hastaExclusive.setDate(hastaExclusive.getDate() + 1);
+    const hasta = hastaExclusive.toISOString().slice(0, 10);
+
+    const label = `${formatearFechaCorta(inicio)} al ${formatearFechaCorta(
+      fin
+    )}`;
+
+    semanas.push({
+      id: `${desde}_${hasta}`,
+      desde,
+      hasta,
+      label,
+      esActual: i === 0,
+    });
+  }
+
+  return semanas;
+};
+
 export default function Tareas() {
-  const { user } = useAuth(); // { username, nombre, email, role, ... }
+  const { user } = useAuth(); // { id, username, nombre, email, rut, role, ... }
 
   // ---------- Estado catálogo de tareas ----------
   const [tareas, setTareas] = useState([]);
@@ -48,20 +97,36 @@ export default function Tareas() {
   });
   const [errores, setErrores] = useState({});
 
-  // ---------- Estado asignaciones actuales ----------
-  // estructura: { [tareaId]: { [diaKey]: { asignacionId, usuarioId, usuarioNombre } } }
-  const [asignacionesSemana, setAsignacionesSemana] = useState({});
+  // ---------- Filtro por semana (histórico) ----------
+  const [semanas] = useState(() => generarSemanas(8));
+  const [semanaSeleccionadaId, setSemanaSeleccionadaId] = useState(
+    () => generarSemanas(8)[0]?.id
+  );
+  const [loadingAsignaciones, setLoadingAsignaciones] = useState(false);
+  const [errorAsignaciones, setErrorAsignaciones] = useState("");
 
-  // ---------- Histórico por semana ----------
-  const [semanasHistorico, setSemanasHistorico] = useState([]); // semanas anteriores
-  const [semanaSeleccionadaIndex, setSemanaSeleccionadaIndex] = useState(-1); // -1 = semana actual
-  const [historicoAsignaciones, setHistoricoAsignaciones] = useState([]); // Asignaciones de la semana seleccionada (pasada)
+  const semanaSeleccionada = useMemo(
+    () => semanas.find((s) => s.id === semanaSeleccionadaId) || semanas[0],
+    [semanas, semanaSeleccionadaId]
+  );
+
+  const semanaEsActual = semanaSeleccionada?.esActual ?? true;
+
+  // ---------- Estado asignaciones semanales ----------
+  // estructura: { [tareaId]: { [diaKey]: { asignacionId, usuarioId, usuarioNombre, estado } } }
+  const [asignacionesSemana, setAsignacionesSemana] = useState({});
 
   // Modal de reglas
   const [showReglasModal, setShowReglasModal] = useState(false);
   const [tareaReglasActual, setTareaReglasActual] = useState(null);
 
   // ---------- Datos derivados ----------
+  const usuarioIdActual = useMemo(() => {
+    if (!user) return null;
+    // ORDEN CANÓNICO: rut -> id -> username -> email
+    return user.rut || user.id || user.username || user.email || null;
+  }, [user]);
+
   const usuarioNombreActual = useMemo(() => {
     if (!user) return "Anónimo";
     return (
@@ -94,30 +159,6 @@ export default function Tareas() {
 
   const normalizarDia = (diaBack) => String(diaBack || "").toUpperCase();
 
-  // Generar semanas históricas (solo anteriores a la semana actual)
-  const generarSemanasHistorico = () => {
-    const hoy = dayjs();
-    const dow = hoy.day(); // 0 = domingo ... 6 = sábado
-    const diffToMonday = (dow + 6) % 7; // cuánto restar para llegar a lunes
-    const lunesEstaSemana = hoy.subtract(diffToMonday, "day");
-
-    const semanas = [];
-    const maxSemanas = 8; // por ejemplo, últimas 8 semanas
-
-    for (let i = 1; i <= maxSemanas; i++) {
-      const inicio = lunesEstaSemana.subtract(i, "week");
-      const fin = inicio.add(6, "day");
-
-      semanas.push({
-        label: `${inicio.format("DD-MM-YY")} al ${fin.format("DD-MM-YY")}`,
-        desde: inicio.format("YYYY-MM-DD"),
-        hasta: fin.format("YYYY-MM-DD"),
-      });
-    }
-
-    setSemanasHistorico(semanas);
-  };
-
   const cargarTareas = async () => {
     try {
       setLoadingTareas(true);
@@ -134,68 +175,57 @@ export default function Tareas() {
   };
 
   const cargarAsignaciones = async () => {
+    if (!semanaSeleccionada) return;
+
     try {
-      // Semana actual → usamos /tareas/asignaciones sin filtro
-      if (semanaSeleccionadaIndex === -1) {
-        const data = await tareaService.obtenerAsignaciones();
-        const mapa = {};
+      setLoadingAsignaciones(true);
+      setErrorAsignaciones("");
 
-        data.forEach((a) => {
-          const tareaId = a.tarea?.id ?? a.tareaId ?? a.tarea_id;
-          const diaKey = normalizarDia(a.dia);
+      const data = await tareaService.obtenerAsignacionesPorSemana({
+        desde: semanaSeleccionada.desde,
+        hasta: semanaSeleccionada.hasta,
+      });
 
-          if (!tareaId || !diaKey) return;
+      const mapa = {};
 
-          if (!mapa[tareaId]) {
-            mapa[tareaId] = {};
-          }
+      data.forEach((a) => {
+        const tareaId = a.tarea?.id ?? a.tareaId ?? a.tarea_id;
+        const diaKey = normalizarDia(a.dia);
 
-          mapa[tareaId][diaKey] = {
-            asignacionId: a.id,
-            usuarioId: a.usuarioId,
-            usuarioNombre: a.usuarioNombre,
-            estado: a.estado,
-          };
-        });
+        if (!tareaId || !diaKey) return;
 
-        setAsignacionesSemana(mapa);
-        setHistoricoAsignaciones([]);
-      } else {
-        // Semana pasada → usamos filtro por fechas (solo lectura)
-        const semana = semanasHistorico[semanaSeleccionadaIndex];
-        if (!semana) return;
+        if (!mapa[tareaId]) {
+          mapa[tareaId] = {};
+        }
 
-        const data = await tareaService.obtenerAsignacionesPorSemana({
-          desde: semana.desde,
-          hasta: semana.hasta,
-        });
+        mapa[tareaId][diaKey] = {
+          asignacionId: a.id,
+          usuarioId: a.usuarioId,
+          usuarioNombre: a.usuarioNombre,
+          estado: a.estado,
+        };
+      });
 
-        setHistoricoAsignaciones(data || []);
-        // No necesitamos asignacionesSemana aquí, la tabla será de sólo lectura
-      }
+      setAsignacionesSemana(mapa);
     } catch (err) {
       console.error("Error al cargar asignaciones:", err);
-      mostrarAlerta("No se pudieron cargar las asignaciones", "danger");
+      setErrorAsignaciones(
+        err?.message ||
+          "No se pudieron cargar las asignaciones para esta semana"
+      );
+    } finally {
+      setLoadingAsignaciones(false);
     }
   };
 
   useEffect(() => {
-    const init = async () => {
-      await cargarTareas();
-      generarSemanasHistorico();
-    };
-    init();
+    cargarTareas();
   }, []);
 
   useEffect(() => {
     cargarAsignaciones();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [semanaSeleccionadaIndex, semanasHistorico.length]);
-
-  const handleCambioSemanaHistorico = (e) => {
-    const idx = parseInt(e.target.value, 10);
-    setSemanaSeleccionadaIndex(idx);
-  };
+  }, [semanaSeleccionadaId]);
 
   // ---------- CRUD de tareas (catálogo) ----------
   const handleNuevaTarea = () => {
@@ -292,7 +322,7 @@ export default function Tareas() {
     }
   };
 
-  // ---------- Lógica de toma/liberación de tareas (semana actual) ----------
+  // ---------- Lógica de toma/liberación de tareas ----------
   const contarAsignacionesTarea = (tareaId) => {
     const porTarea = asignacionesSemana[tareaId];
     if (!porTarea) return 0;
@@ -310,17 +340,26 @@ export default function Tareas() {
       return;
     }
 
+    if (!semanaEsActual) {
+      return;
+    }
+
+    if (!usuarioIdActual) {
+      alert("No se pudo determinar el identificador del usuario actual");
+      return;
+    }
+
     try {
       const asignacion = await tareaService.tomarTarea(tarea.id, {
-        dia: diaKey,
-        usuarioId: user.username || user.email || user.rut || "desconocido",
-        usuarioNombre: usuarioNombreActual,
+        dia: String(diaKey),
+        usuarioId: String(usuarioIdActual), // 👈 sincronizado con Dashboard
+        usuarioNombre: String(usuarioNombreActual),
       });
 
       setAsignacionesSemana((prev) => {
         const copia = { ...prev };
         const porTarea = copia[tarea.id] ? { ...copia[tarea.id] } : {};
-        const diaNorm = normalizarDia(asignacion.dia);
+        const diaNorm = normalizarDia(asignacion.dia || diaKey);
 
         porTarea[diaNorm] = {
           asignacionId: asignacion.id,
@@ -342,6 +381,8 @@ export default function Tareas() {
   };
 
   const handleLiberarTareaDia = async (tareaId, diaKey) => {
+    if (!semanaEsActual) return;
+
     const porTarea = asignacionesSemana[tareaId];
     if (!porTarea || !porTarea[diaKey]) return;
 
@@ -380,8 +421,6 @@ export default function Tareas() {
     setShowReglasModal(true);
   };
 
-  const isSemanaActual = semanaSeleccionadaIndex === -1;
-
   // ---------- Render ----------
   return (
     <div>
@@ -405,36 +444,54 @@ export default function Tareas() {
         </Alert>
       )}
 
-      {/* --------- Tabla de toma de tareas semanal / histórico --------- */}
+      {/* --------- Tabla de toma de tareas semanal (con filtro de semana) --------- */}
       <div className="p-4 mt-5 bg-white rounded border">
         <div className="d-flex justify-content-between align-items-center mb-3">
-          <h3 className="mb-0">Toma de tareas semanal</h3>
-
-          <div className="d-flex align-items-center gap-3">
+          <div>
+            <h3 className="mb-1">Toma de tareas semanal</h3>
             <small className="text-muted">
               Usuario actual: <strong>{usuarioNombreActual}</strong>{" "}
               {esAdmin && <span className="badge bg-info ms-2">Admin</span>}
             </small>
+          </div>
 
-            <Form.Select
-              size="sm"
-              style={{ width: "230px" }}
-              value={semanaSeleccionadaIndex}
-              onChange={handleCambioSemanaHistorico}
+          <div className="text-end">
+            <label className="small text-muted d-block mb-1">
+              Semana a visualizar:
+            </label>
+            <select
+              className="form-select form-select-sm"
+              style={{ minWidth: "230px" }}
+              value={semanaSeleccionadaId}
+              onChange={(e) => setSemanaSeleccionadaId(e.target.value)}
             >
-              <option value={-1}>Semana actual</option>
-              {semanasHistorico.map((sem, idx) => (
-                <option key={idx} value={idx}>
-                  {sem.label}
+              {semanas.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.esActual ? "Semana actual: " : ""}
+                  {s.label}
                 </option>
               ))}
-            </Form.Select>
+            </select>
+            {!semanaEsActual && (
+              <small className="text-muted d-block mt-1">
+                Vista histórica (no se pueden tomar ni liberar tareas).
+              </small>
+            )}
           </div>
         </div>
+
+        {errorAsignaciones && (
+          <div className="text-danger mb-2">{errorAsignaciones}</div>
+        )}
 
         {tareas.length === 0 ? (
           <div className="text-center text-muted">
             Primero configura tareas en el listado inferior.
+          </div>
+        ) : loadingAsignaciones ? (
+          <div className="text-center my-4">
+            <Spinner animation="border" role="status" size="sm" />{" "}
+            <span className="text-muted ms-2">Cargando asignaciones…</span>
           </div>
         ) : (
           <Table striped bordered hover responsive className="mb-0">
@@ -450,9 +507,8 @@ export default function Tareas() {
             </thead>
             <tbody>
               {tareas.map((t) => {
-                const dispRestante = isSemanaActual
-                  ? disponibilidadRestante(t)
-                  : t.disponibilidad;
+                const dispRestante = disponibilidadRestante(t);
+                const porTarea = asignacionesSemana[t.id] || {};
 
                 return (
                   <tr key={t.id} className="text-center align-middle">
@@ -469,87 +525,76 @@ export default function Tareas() {
                     <td>{t.puntos}</td>
 
                     {DIAS.map((d) => {
-                      // -------- SEMANA ACTUAL (interactiva) --------
-                      if (isSemanaActual) {
-                        const porTarea = asignacionesSemana[t.id] || {};
-                        const asignacion = porTarea[d.key];
+                      const asignacion = porTarea[d.key];
 
-                        if (asignacion) {
+                      // Si hay asignación en esa celda
+                      if (asignacion) {
+                        // Vista histórica: solo mostrar badge con color verde/rojo
+                        if (!semanaEsActual) {
+                          const variant =
+                            asignacion.estado === "APROBADA"
+                              ? "success"
+                              : "danger";
+
                           return (
                             <td key={d.key}>
-                              <Badge bg="success" className="rounded-pill">
-                                {asignacion.usuarioNombre}
-                                {esAdmin && (
-                                  <button
-                                    type="button"
-                                    className="btn btn-sm btn-link text-white ms-1 p-0"
-                                    onClick={() =>
-                                      handleLiberarTareaDia(t.id, d.key)
-                                    }
-                                    title="Quitar tarea"
-                                  >
-                                    ×
-                                  </button>
-                                )}
+                              <Badge bg={variant} className="rounded-pill">
+                                {asignacion.usuarioNombre ||
+                                  asignacion.usuarioId}
                               </Badge>
                             </td>
                           );
                         }
 
-                        const disabled = dispRestante <= 0;
-
+                        // Semana actual: badge + opción de liberar para admin
                         return (
                           <td key={d.key}>
-                            <input
-                              className="form-check-input"
-                              type="checkbox"
-                              disabled={disabled}
-                              onChange={(e) => {
-                                if (e.target.checked) {
-                                  handleTomarTareaDia(t, d.key);
-                                } else {
-                                  handleLiberarTareaDia(t.id, d.key);
-                                }
-                              }}
-                            />
+                            <Badge bg="success" className="rounded-pill">
+                              {asignacion.usuarioNombre || asignacion.usuarioId}
+                              {esAdmin && (
+                                <button
+                                  type="button"
+                                  className="btn btn-sm btn-link text-white ms-1 p-0"
+                                  onClick={() =>
+                                    handleLiberarTareaDia(t.id, d.key)
+                                  }
+                                  title="Quitar tarea"
+                                >
+                                  ×
+                                </button>
+                              )}
+                            </Badge>
                           </td>
                         );
                       }
 
-                      // -------- SEMANA PASADA (histórico solo lectura) --------
-                      const asignacionHist = historicoAsignaciones.find((a) => {
-                        const tareaId =
-                          a.tarea?.id ?? a.tareaId ?? a.tarea_id;
-                        const diaKey = normalizarDia(a.dia);
-                        return tareaId === t.id && diaKey === d.key;
-                      });
-
-                      if (!asignacionHist) {
+                      // Sin asignación en esa celda
+                      if (!semanaEsActual) {
+                        // Semana histórica: no hay checkbox
                         return (
-                          <td key={d.key} className="text-muted">
-                            —
+                          <td key={d.key}>
+                            <span className="text-muted">—</span>
                           </td>
                         );
                       }
 
-                      const estado = String(
-                        asignacionHist.estado || ""
-                      ).toUpperCase();
-
-                      let bg = "secondary";
-                      if (estado === "APROBADA") bg = "success";
-                      else if (
-                        estado === "RECHAZADA" ||
-                        estado === "NO_CUMPLIDA"
-                      )
-                        bg = "danger";
-                      else bg = "warning";
+                      // Semana actual: checkbox para tomar/liberar
+                      const disabled = dispRestante <= 0;
 
                       return (
                         <td key={d.key}>
-                          <Badge bg={bg} className="rounded-pill px-3">
-                            {asignacionHist.usuarioNombre || "—"}
-                          </Badge>
+                          <input
+                            className="form-check-input"
+                            type="checkbox"
+                            disabled={disabled}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                handleTomarTareaDia(t, d.key);
+                              } else {
+                                handleLiberarTareaDia(t.id, d.key);
+                              }
+                            }}
+                          />
                         </td>
                       );
                     })}
@@ -699,8 +744,7 @@ export default function Tareas() {
 
             <Form.Group className="mb-3">
               <Form.Label>
-                Disponibilidad semanal{" "}
-                <span className="text-danger">*</span>
+                Disponibilidad semanal <span className="text-danger">*</span>
               </Form.Label>
               <Form.Control
                 type="number"
@@ -732,10 +776,7 @@ export default function Tareas() {
           </Form>
         </Modal.Body>
         <Modal.Footer>
-          <Button
-            variant="secondary"
-            onClick={() => setShowModal(false)}
-          >
+          <Button variant="secondary" onClick={() => setShowModal(false)}>
             Cancelar
           </Button>
           <Button variant="primary" onClick={handleGuardarTarea}>
@@ -745,10 +786,7 @@ export default function Tareas() {
       </Modal>
 
       {/* ---------- Modal de reglas ---------- */}
-      <Modal
-        show={showReglasModal}
-        onHide={() => setShowReglasModal(false)}
-      >
+      <Modal show={showReglasModal} onHide={() => setShowReglasModal(false)}>
         <Modal.Header closeButton>
           <Modal.Title>
             Reglas de {tareaReglasActual?.nombre || "tarea"}
@@ -757,8 +795,7 @@ export default function Tareas() {
         <Modal.Body>
           {tareaReglasActual ? (
             <p className="mt-3" style={{ whiteSpace: "pre-wrap" }}>
-              {tareaReglasActual.reglas &&
-              tareaReglasActual.reglas.trim()
+              {tareaReglasActual.reglas && tareaReglasActual.reglas.trim()
                 ? tareaReglasActual.reglas
                 : "Esta tarea no tiene reglas definidas."}
             </p>

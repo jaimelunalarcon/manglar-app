@@ -108,7 +108,7 @@ const tareaService = {
   },
 
   /**
-   * Obtener todas las asignaciones (sin filtro)
+   * Obtener todas las asignaciones (sin filtro de fechas)
    * backend: GET /api/tareas/asignaciones
    * Usado en el Dashboard admin.
    */
