@@ -20,16 +20,15 @@ export default function DashboardAdminTareas() {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
-  // Filtro por estado (para la lista "Tareas Arrendatarios")
   const [filtroEstado, setFiltroEstado] = useState("TODOS");
 
-  // Modal para SUBIR evidencia (Mis Tareas)
+  // Modal evidencia (Mis tareas)
   const [showEvidenciaModal, setShowEvidenciaModal] = useState(false);
   const [asignacionEvidencia, setAsignacionEvidencia] = useState(null);
   const [inputEvidencia, setInputEvidencia] = useState("");
   const [savingEvidencia, setSavingEvidencia] = useState(false);
 
-  // Modal para APROBAR / NO CUMPLIDA (Admin)
+  // Modal revisión (Admin)
   const [showRevisionModal, setShowRevisionModal] = useState(false);
   const [asignacionRevision, setAsignacionRevision] = useState(null);
   const [accionLoading, setAccionLoading] = useState(false);
@@ -38,52 +37,15 @@ export default function DashboardAdminTareas() {
   // -------- Identificadores de usuario --------
   const usuarioIdActual = useMemo(() => {
     if (!user) return null;
-    return (
-      user.id || // 👈 clave principal para sincronizar con Tareas.jsx
-      user.rut ||
-      user.username ||
-      user.email ||
-      null
-    );
+    return user.id || user.rut || user.username || user.email || null;
   }, [user]);
 
   const nombreUsuarioActual = useMemo(() => {
     if (!user) return "Usuario";
-    return (
-      user.nombre ||
-      user.name ||
-      user.username ||
-      user.email ||
-      "Usuario"
-    );
+    return user.nombre || user.name || user.username || user.email || "Usuario";
   }, [user]);
 
-  // --- Helpers de tiempo / fecha ---
- const calcularHorasRestantes = (asignacion) => {
-  if (!asignacion?.fechaAsignacion) return null;
-
-  // Usamos la misma lógica que para mostrar la fecha
-  const fechaLogica =
-    obtenerFechaLogicaSemana(asignacion) ||
-    dayjs(asignacion.fechaAsignacion);
-
-  const inicioDia = fechaLogica.startOf("day").add(1, "minute"); // 00:01
-  const deadline = inicioDia.add(36, "hour");
-  const ahora = dayjs();
-
-  return deadline.diff(ahora, "hour"); // puede ser positivo o negativo
-};
-
-  const formatearFechaCorta = (iso) => {
-    if (!iso) return "";
-    const d = new Date(iso);
-    const dia = String(d.getDate()).padStart(2, "0");
-    const mes = String(d.getMonth() + 1).padStart(2, "0");
-    const año = String(d.getFullYear()).slice(-2);
-    return `${dia}-${mes}-${año}`;
-  };
-
-  // --- Fecha lógica por día de semana (para que se vea Sábado / Domingo distinto) ---
+  // --- Fecha lógica por día de semana ---
   const DIA_INDEX = {
     LUNES: 0,
     MARTES: 1,
@@ -94,28 +56,55 @@ export default function DashboardAdminTareas() {
     DOMINGO: 6,
   };
 
+  // Lunes y Domingo de la semana actual (en hora local)
+  const getSemanaActualRange = () => {
+    const now = dayjs();
+    const offsetDesdeLunes = (now.day() + 6) % 7; // 0=lunes ... 6=domingo
+    const lunes = now.subtract(offsetDesdeLunes, "day").startOf("day");
+    const domingo = lunes.add(6, "day").endOf("day");
+    return { lunes, domingo };
+  };
+
   /**
-   * Dada una asignación, calcula la fecha "lógica" de la semana
-   * en función de fechaAsignacion y el campo dia (LUNES...DOMINGO).
-   * Devuelve un dayjs o null.
+   * Fecha lógica de la asignación según su "dia" (LUNES..DOMINGO) y la semana de fechaAsignacion
    */
   const obtenerFechaLogicaSemana = (asignacion) => {
     if (!asignacion?.fechaAsignacion) return null;
 
     const base = dayjs(asignacion.fechaAsignacion);
-    const dow = base.day(); // 0=domingo, 1=lunes,...,6=sábado
 
-    // Convertimos al índice 0-6 donde 0=lunes
-    // si dow=1 (lunes) => offset=0; si dow=0 (domingo) => offset=6
-    const offsetDesdeLunes = (dow + 6) % 7;
-    const lunesSemana = base.subtract(offsetDesdeLunes, "day");
+    // semana de "base" -> sacamos lunes de esa semana
+    const offsetDesdeLunes = (base.day() + 6) % 7;
+    const lunesSemana = base.subtract(offsetDesdeLunes, "day").startOf("day");
 
     const diaKey = String(asignacion.dia || "").toUpperCase();
     const indexDia = DIA_INDEX[diaKey];
+    if (indexDia == null) return base;
 
-    if (indexDia == null) return base; // fallback
+    return lunesSemana.add(indexDia, "day").startOf("day");
+  };
 
-    return lunesSemana.add(indexDia, "day");
+  // --- Helpers de tiempo / fecha ---
+  const calcularHorasRestantes = (asignacion) => {
+    if (!asignacion?.fechaAsignacion) return null;
+
+    const fechaLogica =
+      obtenerFechaLogicaSemana(asignacion) || dayjs(asignacion.fechaAsignacion);
+
+    const inicioDia = fechaLogica.startOf("day").add(1, "minute"); // 00:01
+    const deadline = inicioDia.add(36, "hour");
+    const ahora = dayjs();
+
+    return deadline.diff(ahora, "hour");
+  };
+
+  const formatearFechaCorta = (iso) => {
+    if (!iso) return "";
+    const d = new Date(iso);
+    const dia = String(d.getDate()).padStart(2, "0");
+    const mes = String(d.getMonth() + 1).padStart(2, "0");
+    const año = String(d.getFullYear()).slice(-2);
+    return `${dia}-${mes}-${año}`;
   };
 
   const getEstadoBadgeClass = (estado, horasRestantes) => {
@@ -124,30 +113,26 @@ export default function DashboardAdminTareas() {
     if (estado === "RECHAZADA" || estado === "NO_CUMPLIDA") return "bg-danger";
 
     if (estado === "TOMADA") {
-      if (horasRestantes != null && horasRestantes <= 0) {
-        return "bg-danger";
-      }
+      if (horasRestantes != null && horasRestantes <= 0) return "bg-danger";
       return "bg-warning text-dark";
     }
     return "bg-secondary";
   };
 
-  // Clases para el borde izquierdo de la card
   const getCardBorderClass = (estado, horasRestantes) => {
     switch (estado) {
       case "APROBADA":
-        return "card-tarea state-aprobada"; // verde
+        return "card-tarea state-aprobada";
       case "PENDIENTE_APROBACION":
-        return "card-tarea state-pendiente-aprobacion"; // azul
+        return "card-tarea state-pendiente-aprobacion";
       case "RECHAZADA":
       case "NO_CUMPLIDA":
-        return "card-tarea state-no-cumplida"; // rojo
+        return "card-tarea state-no-cumplida";
       case "TOMADA":
       default:
-        if (horasRestantes != null && horasRestantes <= 0) {
+        if (horasRestantes != null && horasRestantes <= 0)
           return "card-tarea state-no-cumplida";
-        }
-        return "card-tarea state-tomada"; // amarillo
+        return "card-tarea state-tomada";
     }
   };
 
@@ -162,20 +147,19 @@ export default function DashboardAdminTareas() {
         return "No cumplida";
       case "TOMADA":
       default:
-        if (horasRestantes != null && horasRestantes <= 0) {
+        if (horasRestantes != null && horasRestantes <= 0)
           return "No cumplida (vencida)";
-        }
         return "Tomada";
     }
   };
 
-  // --- Filtrado para la lista de Arrendatarios ---
+  // --- Filtrado por estado (después del filtrado por semana) ---
   const asignacionesAdminFiltradas = useMemo(() => {
     if (filtroEstado === "TODOS") return asignacionesAdmin;
     return asignacionesAdmin.filter((a) => a.estado === filtroEstado);
   }, [asignacionesAdmin, filtroEstado]);
 
-  // --- Carga de datos desde la API (usa SOLO /tareas/asignaciones) ---
+  // --- Carga de datos desde la API + FILTRO POR SEMANA ACTUAL ---
   const cargarAsignaciones = async () => {
     if (!user) return;
     setLoading(true);
@@ -184,22 +168,30 @@ export default function DashboardAdminTareas() {
     try {
       const todas = await tareaService.obtenerAsignaciones();
 
-      console.log("🔍 TODAS LAS ASIGNACIONES:", todas);
+      const { lunes, domingo } = getSemanaActualRange();
 
-      setAsignacionesAdmin(todas);
+      // ✅ filtramos por fecha lógica (según "dia") dentro de la semana actual
+      const deEstaSemana = (todas || []).filter((a) => {
+        const fechaLogica = obtenerFechaLogicaSemana(a) || dayjs(a.fechaAsignacion);
+        const ts = fechaLogica.valueOf();
+        return ts >= lunes.valueOf() && ts <= domingo.valueOf();
+      });
+
+      setAsignacionesAdmin(deEstaSemana);
 
       if (usuarioIdActual) {
-        const mias = todas.filter(
+        const mias = deEstaSemana.filter(
           (a) => String(a.usuarioId) === String(usuarioIdActual)
         );
 
-        console.log("🧍‍♂️ usuarioIdActual:", usuarioIdActual);
-        console.log("🎯 MIS ASIGNACIONES:", mias);
-
-        // Exponer para debug
-        window.__asignacionesAdmin = todas;
+        // debug opcional
+        window.__asignacionesAdmin = deEstaSemana;
         window.__asignacionesUsuario = mias;
         window.__usuarioIdActual = usuarioIdActual;
+        window.__semanaActual = {
+          lunes: lunes.format("YYYY-MM-DD"),
+          domingo: domingo.format("YYYY-MM-DD"),
+        };
 
         setAsignacionesUsuario(mias);
       } else {
@@ -207,7 +199,6 @@ export default function DashboardAdminTareas() {
       }
     } catch (err) {
       console.error("❌ Error en cargarAsignaciones:", err);
-
       setErrorMsg(
         err?.message ||
           err?.response?.data?.message ||
@@ -224,7 +215,6 @@ export default function DashboardAdminTareas() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, usuarioIdActual]);
 
-  // --- Helpers para actualizar estados en memoria ---
   const actualizarAsignacionEnState = (actualizada) => {
     setAsignacionesAdmin((prev) =>
       prev.map((a) => (a.id === actualizada.id ? actualizada : a))
@@ -234,7 +224,7 @@ export default function DashboardAdminTareas() {
     );
   };
 
-  // --- Modal: Subir evidencia (Mis Tareas) ---
+  // --- Evidencia ---
   const abrirModalEvidencia = (asignacion) => {
     setAsignacionEvidencia(asignacion);
     setInputEvidencia(asignacion.fotoConfirmacion || "");
@@ -265,7 +255,7 @@ export default function DashboardAdminTareas() {
     }
   };
 
-  // --- Modal: Revisar / Aprobar / No cumplida (Admin) ---
+  // --- Revisión admin ---
   const abrirModalRevision = (asignacion) => {
     setAsignacionRevision(asignacion);
     setAccionError("");
@@ -301,9 +291,7 @@ export default function DashboardAdminTareas() {
     setAccionError("");
 
     try {
-      const resp = await tareaService.marcarNoCumplida(
-        asignacionRevision.id
-      );
+      const resp = await tareaService.marcarNoCumplida(asignacionRevision.id);
       actualizarAsignacionEnState(resp);
       cerrarModalRevision();
     } catch (err) {
@@ -333,10 +321,11 @@ export default function DashboardAdminTareas() {
         </div>
       )}
 
-      {/* --------- Sección: Tareas Arrendatarios (vista admin) --------- */}
+      {/* --------- Tareas Arrendatarios --------- */}
       <section className="border p-3 rounded bg-white mb-3">
         <div className="d-flex justify-content-between align-items-center mb-3">
           <h2 className="mb-0">Tareas Arrendatarios</h2>
+
           <div>
             <label className="me-2 small text-muted">Filtrar por estado:</label>
             <select
@@ -347,9 +336,7 @@ export default function DashboardAdminTareas() {
             >
               <option value="TODOS">Todos</option>
               <option value="TOMADA">Tomadas</option>
-              <option value="PENDIENTE_APROBACION">
-                Pendiente de aprobación
-              </option>
+              <option value="PENDIENTE_APROBACION">Pendiente de aprobación</option>
               <option value="APROBADA">Aprobadas</option>
               <option value="NO_CUMPLIDA">No cumplidas</option>
               <option value="RECHAZADA">Rechazadas</option>
@@ -360,7 +347,9 @@ export default function DashboardAdminTareas() {
         {loading && <p className="text-muted">Cargando asignaciones...</p>}
 
         {!loading && asignacionesAdminFiltradas.length === 0 && (
-          <p className="text-muted">No hay tareas asignadas con este filtro.</p>
+          <p className="text-muted">
+            No hay tareas asignadas (semana actual) con este filtro.
+          </p>
         )}
 
         {!loading &&
@@ -384,6 +373,7 @@ export default function DashboardAdminTareas() {
                           </>
                         )}
                       </div>
+
                       <div className="text-muted small">
                         {formatearFechaCorta(
                           (fechaLogica || dayjs(a.fechaAsignacion)).toISOString()
@@ -393,9 +383,7 @@ export default function DashboardAdminTareas() {
                             /{" "}
                             <span
                               className={
-                                horasRestantes <= 0
-                                  ? "text-danger"
-                                  : "text-success"
+                                horasRestantes <= 0 ? "text-danger" : "text-success"
                               }
                             >
                               {horasRestantes <= 0
@@ -414,7 +402,6 @@ export default function DashboardAdminTareas() {
                     </div>
                   </div>
 
-                  {/* Botón de revisión solo cuando está pendiente de aprobación */}
                   {a.estado === "PENDIENTE_APROBACION" && (
                     <div className="mt-3 text-end">
                       <Button
@@ -433,7 +420,7 @@ export default function DashboardAdminTareas() {
           })}
       </section>
 
-      {/* --------- Sección: Mis Tareas (el admin como arrendatario) --------- */}
+      {/* --------- Mis Tareas --------- */}
       <section className="border p-3 rounded bg-white">
         <h2 className="mb-3">Mis Tareas</h2>
 
@@ -444,9 +431,7 @@ export default function DashboardAdminTareas() {
         )}
 
         {usuarioIdActual && asignacionesUsuario.length === 0 && !loading && (
-          <p className="text-muted">
-            Aún no tienes tareas asignadas en esta semana.
-          </p>
+          <p className="text-muted">Aún no tienes tareas asignadas esta semana.</p>
         )}
 
         {usuarioIdActual &&
@@ -465,6 +450,7 @@ export default function DashboardAdminTareas() {
                       <div>
                         <strong>{a.tarea?.nombre || "Tarea sin nombre"}</strong>
                       </div>
+
                       <div className="text-muted small">
                         {formatearFechaCorta(
                           (fechaLogica || dayjs(a.fechaAsignacion)).toISOString()
@@ -474,9 +460,7 @@ export default function DashboardAdminTareas() {
                             /{" "}
                             <span
                               className={
-                                horasRestantes <= 0
-                                  ? "text-danger"
-                                  : "text-success"
+                                horasRestantes <= 0 ? "text-danger" : "text-success"
                               }
                             >
                               {horasRestantes <= 0
@@ -495,7 +479,6 @@ export default function DashboardAdminTareas() {
                     </div>
                   </div>
 
-                  {/* Botón subir evidencia SOLO si está tomada y aún en plazo */}
                   {a.estado === "TOMADA" && horasRestantes > 0 && (
                     <div className="mt-3 text-end">
                       <Button
@@ -514,7 +497,7 @@ export default function DashboardAdminTareas() {
           })}
       </section>
 
-      {/* ---------- Modal SUBIR EVIDENCIA (Mis Tareas) ---------- */}
+      {/* ---------- Modal SUBIR EVIDENCIA ---------- */}
       <Modal show={showEvidenciaModal} onHide={cerrarModalEvidencia}>
         <Modal.Header closeButton>
           <Modal.Title>Subir evidencia de tarea</Modal.Title>
@@ -529,9 +512,7 @@ export default function DashboardAdminTareas() {
                 <strong>Usuario:</strong> {nombreUsuarioActual}
               </p>
               <Form.Group className="mb-3">
-                <Form.Label>
-                  Evidencia (por ahora texto / URL simulada)
-                </Form.Label>
+                <Form.Label>Evidencia (texto / URL simulada)</Form.Label>
                 <Form.Control
                   type="text"
                   placeholder="Ej: foto-patio-limpio.jpg o descripción"
@@ -546,24 +527,16 @@ export default function DashboardAdminTareas() {
           )}
         </Modal.Body>
         <Modal.Footer>
-          <Button
-            variant="secondary"
-            onClick={cerrarModalEvidencia}
-            disabled={savingEvidencia}
-          >
+          <Button variant="secondary" onClick={cerrarModalEvidencia} disabled={savingEvidencia}>
             Cancelar
           </Button>
-          <Button
-            variant="success"
-            onClick={handleGuardarEvidencia}
-            disabled={savingEvidencia}
-          >
+          <Button variant="success" onClick={handleGuardarEvidencia} disabled={savingEvidencia}>
             {savingEvidencia ? "Guardando..." : "Enviar evidencia"}
           </Button>
         </Modal.Footer>
       </Modal>
 
-      {/* ---------- Modal REVISAR / APROBAR (Admin) ---------- */}
+      {/* ---------- Modal REVISIÓN ADMIN ---------- */}
       <Modal show={showRevisionModal} onHide={cerrarModalRevision} size="lg">
         <Modal.Header closeButton>
           <Modal.Title>Revisión de tarea</Modal.Title>
@@ -576,8 +549,7 @@ export default function DashboardAdminTareas() {
                 {asignacionRevision.tarea?.nombre || "Tarea sin nombre"}
                 <br />
                 <strong>Arrendatario:</strong>{" "}
-                {asignacionRevision.usuarioNombre ||
-                  asignacionRevision.usuarioId}
+                {asignacionRevision.usuarioNombre || asignacionRevision.usuarioId}
                 <br />
                 <strong>Fecha asignación:</strong>{" "}
                 {formatearFechaCorta(asignacionRevision.fechaAsignacion)}
@@ -588,9 +560,7 @@ export default function DashboardAdminTareas() {
               <h6>Evidencia enviada:</h6>
               {asignacionRevision.fotoConfirmacion ? (
                 <>
-                  {/\.(jpg|jpeg|png|webp|gif)$/i.test(
-                    asignacionRevision.fotoConfirmacion
-                  ) ||
+                  {/\.(jpg|jpeg|png|webp|gif)$/i.test(asignacionRevision.fotoConfirmacion) ||
                   asignacionRevision.fotoConfirmacion.startsWith("http") ? (
                     <img
                       src={asignacionRevision.fotoConfirmacion}
@@ -616,12 +586,9 @@ export default function DashboardAdminTareas() {
             <p>Cargando…</p>
           )}
         </Modal.Body>
+
         <Modal.Footer>
-          <Button
-            variant="secondary"
-            onClick={cerrarModalRevision}
-            disabled={accionLoading}
-          >
+          <Button variant="secondary" onClick={cerrarModalRevision} disabled={accionLoading}>
             Cerrar
           </Button>
           <Button
